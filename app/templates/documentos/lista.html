@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Documentos {{ maquina.Patente }} · Gestión de Flota{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb">
+  <li class="breadcrumb-item"><a href="{{ url_for('maquinaria.lista') }}">Flota</a></li>
+  <li class="breadcrumb-item"><a href="{{ url_for('maquinaria.perfil', maquinaria_id=maquina.ID_Maquinaria) }}">{{ maquina.Patente }}</a></li>
+  <li class="breadcrumb-item active">Documentos</li>
+</ol></nav>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <h1 class="h4 m-0">Documentos · {{ maquina.Patente }} <span class="text-muted fs-6">({{ documentos|length }})</span></h1>
+  {% if puede_escribir %}<a href="{{ url_for('documentos.subir', maquinaria_id=maquina.ID_Maquinaria) }}" class="btn btn-primary">+ Subir documento</a>{% endif %}
+</div>
+
+<form method="get" class="row g-2 mb-3">
+  <div class="col-8 col-md-5">
+    <select name="categoria" class="form-select" aria-label="Categoría">
+      <option value="">Todas las categorías</option>
+      {% for c in categorias %}<option value="{{ c.ID_Categoria }}" {{ 'selected' if categoria == c.ID_Categoria }}>{{ c.Nombre_Categoria }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="col-4 col-md-2 d-grid"><button class="btn btn-outline-secondary">Filtrar</button></div>
+</form>
+
+<div class="table-responsive">
+<table class="table table-sm table-striped align-middle bg-white">
+  <thead><tr><th>Nombre</th><th>Categoría</th><th class="text-end">Tamaño</th><th>Subido</th><th class="text-end">Acciones</th></tr></thead>
+  <tbody>
+  {% for d in documentos %}
+    {% set base = {'maquinaria_id': maquina.ID_Maquinaria, 'documento_id': d.ID_Documento} %}
+    <tr>
+      <td>{{ d.Nombre_Original }}</td>
+      <td><span class="badge text-bg-light border">{{ d.Nombre_Categoria }}</span></td>
+      <td class="text-end text-nowrap">{{ '%.2f'|format(d.Tamano_Archivo_MB) }} MB</td>
+      <td class="small text-muted">{{ d.Fecha_Subida.strftime('%d-%m-%Y %H:%M') }}<br>{{ d.Nombre_Completo }}</td>
+      <td class="text-end text-nowrap">
+        <a class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener" href="{{ url_for('documentos.ver', **base) }}">Ver</a>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('documentos.descargar', **base) }}">Descargar</a>
+        {% if puede_escribir %}
+          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('documentos.editar', **base) }}">Editar</a>
+          <form method="post" action="{{ url_for('documentos.eliminar', **base) }}" class="d-inline"
+                onsubmit="return confirm('¿Eliminar definitivamente este documento? Esta acción no se puede deshacer.');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-sm btn-outline-danger">Eliminar</button>
+          </form>
+        {% endif %}
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="5" class="text-center text-muted py-4">No hay documentos{{ ' en esta categoría' if categoria }}.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

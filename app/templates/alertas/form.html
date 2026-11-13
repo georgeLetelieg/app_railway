@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% from "bitacora/_macros.html" import lectura %}
+{% block title %}Vencimientos · {{ maquina.Patente }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb">
+  <li class="breadcrumb-item"><a href="{{ url_for('maquinaria.lista') }}">Flota</a></li>
+  <li class="breadcrumb-item"><a href="{{ url_for('maquinaria.perfil', maquinaria_id=maquina.ID_Maquinaria) }}">{{ maquina.Patente }}</a></li>
+  <li class="breadcrumb-item active">Vencimientos</li>
+</ol></nav>
+<div class="row justify-content-center"><div class="col-12 col-lg-7">
+<div class="card shadow-sm"><div class="card-body p-4">
+  <h1 class="h4 mb-1">Vencimientos · {{ maquina.Patente }}</h1>
+  <p class="text-muted small">{{ maquina.Modelo }}. Deja un campo vacío para quitar el valor.</p>
+  <form method="post" novalidate action="{{ url_for('alertas.editar', maquinaria_id=maquina.ID_Maquinaria) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label for="revision" class="form-label">Vencimiento de la revisión técnica</label>
+        <input type="date" id="revision" name="revision" class="form-control" value="{{ datos.revision }}">
+      </div>
+      <div class="col-md-6">
+        <label for="permiso" class="form-label">Vencimiento del permiso de circulación</label>
+        <input type="date" id="permiso" name="permiso" class="form-control" value="{{ datos.permiso }}">
+      </div>
+      <div class="col-12">
+        <label for="mantencion" class="form-label">Próxima mantención preventiva (horómetro objetivo, h)</label>
+        <input id="mantencion" name="mantencion" inputmode="decimal" class="form-control" placeholder="Ej: 1500" value="{{ datos.mantencion }}">
+        <div class="form-text">Horómetro actual según la bitácora: {{ lectura(lecturas.horometro, 'h') }}. La alerta se activa cuando falten {{ config.ALERTA_HORAS_MANTENCION }} horas o menos.</div>
+      </div>
+    </div>
+    <div class="d-flex gap-2 mt-4">
+      <button type="submit" class="btn btn-primary">Guardar vencimientos</button>
+      <a class="btn btn-outline-secondary" href="{{ url_for('maquinaria.perfil', maquinaria_id=maquina.ID_Maquinaria) }}">Cancelar</a>
+    </div>
+  </form>
+</div></div>
+</div></div>
+{% endblock %}

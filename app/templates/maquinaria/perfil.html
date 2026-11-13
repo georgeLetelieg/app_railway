@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% from "maquinaria/_macros.html" import estado_badge, foto %}
+{% from "alertas/_macros.html" import semaforo_badge, item_badge %}
+{% block title %}{{ maquina.Patente }} · Gestión de Flota{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb">
+  <li class="breadcrumb-item"><a href="{{ url_for('maquinaria.lista') }}">Flota</a></li>
+  <li class="breadcrumb-item active">{{ maquina.Patente }}</li>
+</ol></nav>
+
+<div class="row g-4">
+  <div class="col-12 col-md-5">{{ foto(maquina, '320px') }}</div>
+  <div class="col-12 col-md-7">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+      <h1 class="h3 m-0">{{ maquina.Patente }}</h1>
+      <div class="d-flex flex-column align-items-end gap-1">{{ estado_badge(maquina.Estado_Operativo_Actual, true) }}{{ semaforo_badge(alertas.semaforo) }}</div>
+    </div>
+    <dl class="row">
+      <dt class="col-5 col-md-4">Modelo</dt><dd class="col-7 col-md-8">{{ maquina.Modelo }}</dd>
+      <dt class="col-5 col-md-4">Año</dt><dd class="col-7 col-md-8">{{ maquina.Anio }}</dd>
+      <dt class="col-5 col-md-4">Combustible</dt><dd class="col-7 col-md-8">{{ maquina.Tipo_Combustible }}</dd>
+      <dt class="col-5 col-md-4">N° de chasis</dt><dd class="col-7 col-md-8">{{ maquina.Numero_Chasis }}</dd>
+    </dl>
+    {% if puede_escribir %}
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('maquinaria.editar', maquinaria_id=maquina.ID_Maquinaria) }}" class="btn btn-outline-primary">Editar</a>
+      <form method="post" action="{{ url_for('maquinaria.eliminar', maquinaria_id=maquina.ID_Maquinaria) }}"
+            onsubmit="return confirm('¿Eliminar definitivamente la maquinaria {{ maquina.Patente }}? Esta acción no se puede deshacer.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline-danger">Eliminar</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card mt-4"><div class="card-body">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+    <h2 class="h6 m-0">Alertas de vencimiento</h2>
+    {% if puede_escribir %}<a class="btn btn-outline-primary btn-sm" href="{{ url_for('alertas.editar', maquinaria_id=maquina.ID_Maquinaria) }}">Editar vencimientos</a>{% endif %}
+  </div>
+  <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+    {% for it in alertas['items'] if not it.personalizada %}
+    <tr><td>{{ it.nombre }}</td><td class="text-nowrap">{{ it.valor_texto }}</td><td>{{ item_badge(it.estado) }}</td><td class="small text-muted">{{ it.detalle }}</td></tr>
+    {% endfor %}
+  </table></div>
+  {% if not alertas.activa %}<div class="small text-muted mt-2">Maquinaria inactiva: no se incluye en los avisos generales.</div>{% endif %}
+</div></div>
+
+<div class="card mt-3" id="alertas-personalizadas"><div class="card-body">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+    <h2 class="h6 m-0">Alertas personalizadas</h2>
+    {% if puede_escribir %}<a class="btn btn-primary btn-sm" href="{{ url_for('personalizadas.nueva', maquinaria_id=maquina.ID_Maquinaria) }}">+ Nueva alerta</a>{% endif %}
+  </div>
+  {% macro fila(p) %}
+    {% set base = {'maquinaria_id': maquina.ID_Maquinaria, 'alerta_id': p.ID_Alerta_Personalizada} %}
+    <tr class="{{ 'text-muted' if p.estado == 'cumplida' }}">
+      <td>{{ p.Titulo_Alerta }}<div class="small text-muted">Creada por {{ p.Nombre_Completo }}</div></td>
+      <td class="text-nowrap">{{ p.Fecha_Vencimiento.strftime('%d-%m-%Y') }}</td>
+      <td>{{ item_badge(p.estado) }}</td>
+      <td class="small text-muted">{{ p.detalle }}</td>
+      <td class="text-end text-nowrap">
+        {% if puede_escribir %}
+          {% if p.estado == 'cumplida' %}
+            <form method="post" action="{{ url_for('personalizadas.reactivar', **base) }}" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-secondary">Reactivar</button></form>
+          {% else %}
+            <form method="post" action="{{ url_for('personalizadas.completar', **base) }}" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-success">Marcar cumplida</button></form>
+            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('personalizadas.editar', **base) }}">Editar</a>
+          {% endif %}
+          <form method="post" action="{{ url_for('personalizadas.eliminar', **base) }}" class="d-inline" onsubmit="return confirm('¿Eliminar esta alerta?');"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-danger">Eliminar</button></form>
+        {% endif %}
+      </td>
+    </tr>
+  {% endmacro %}
+  {% if personalizadas.activas or personalizadas.cumplidas %}
+  <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+    {% for p in personalizadas.activas %}{{ fila(p) }}{% endfor %}
+    {% for p in personalizadas.cumplidas %}{{ fila(p) }}{% endfor %}
+  </table></div>
+  {% else %}<div class="small text-muted">No hay alertas personalizadas para esta maquinaria.</div>{% endif %}
+</div></div>
+
+<div class="card mt-3"><div class="card-body">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div>
+      <h2 class="h6 mb-1">Bitácora operativa</h2>
+      <div class="small text-muted">
+        Horómetro: {% if lecturas.horometro %}<strong>{{ '%.2f'|format(lecturas.horometro.valor) }} h</strong> ({{ lecturas.horometro.fecha.strftime('%d-%m-%Y') }}){% else %}sin lecturas{% endif %}
+        · Kilometraje: {% if lecturas.kilometraje %}<strong>{{ '%.2f'|format(lecturas.kilometraje.valor) }} km</strong> ({{ lecturas.kilometraje.fecha.strftime('%d-%m-%Y') }}){% else %}sin lecturas{% endif %}
+      </div>
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-primary btn-sm" href="{{ url_for('bitacora.lista', maquinaria_id=maquina.ID_Maquinaria) }}">Ver bitácora</a>
+      {% if puede_escribir %}<a class="btn btn-primary btn-sm" href="{{ url_for('bitacora.nuevo', maquinaria_id=maquina.ID_Maquinaria) }}">Registrar día</a>{% endif %}
+    </div>
+  </div>
+</div></div>
+<div class="card mt-3"><div class="card-body">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div>
+      <h2 class="h6 mb-1">Documentos</h2>
+      <div class="small text-muted">{{ n_documentos }} archivo(s) adjunto(s)</div>
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-primary btn-sm" href="{{ url_for('documentos.lista', maquinaria_id=maquina.ID_Maquinaria) }}">Ver documentos</a>
+      {% if puede_escribir %}<a class="btn btn-primary btn-sm" href="{{ url_for('documentos.subir', maquinaria_id=maquina.ID_Maquinaria) }}">Subir documento</a>{% endif %}
+    </div>
+  </div>
+</div></div>
+<div class="card mt-3"><div class="card-body">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div>
+      <h2 class="h6 mb-1">Combustible</h2>
+      <div class="small text-muted">
+        {% if carga %}Última carga: {{ carga.Fecha_Carga.strftime('%d-%m-%Y %H:%M') }} · <strong>{{ carga.Litros_Cargados|num_es }} L</strong>{% else %}Sin cargas registradas{% endif %}
+      </div>
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-primary btn-sm" href="{{ url_for('combustible.lista', maquina=maquina.ID_Maquinaria) }}">Ver cargas</a>
+      {% if puede_escribir %}<a class="btn btn-primary btn-sm" href="{{ url_for('combustible.nueva', maquina=maquina.ID_Maquinaria) }}">Registrar carga</a>{% endif %}
+    </div>
+  </div>
+</div></div>
+<div class="card mt-3"><div class="card-body">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div>
+      <h2 class="h6 mb-1">Mantenciones</h2>
+      <div class="small text-muted">
+        {% if mantencion %}{{ n_mantenciones }} registro(s) · última: {{ mantencion.Fecha_Mantencion.strftime('%d-%m-%Y') }} a las <strong>{{ mantencion.Horometro_Mecanico|num_es }}</strong>{% else %}Sin mantenciones registradas{% endif %}
+      </div>
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-primary btn-sm" href="{{ url_for('mantenciones.lista', maquinaria_id=maquina.ID_Maquinaria) }}">Ver historial</a>
+      {% if puede_escribir %}<a class="btn btn-primary btn-sm" href="{{ url_for('mantenciones.nueva', maquinaria_id=maquina.ID_Maquinaria) }}">Registrar mantención</a>{% endif %}
+    </div>
+  </div>
+</div></div>
+<div class="card mt-3"><div class="card-body">
+  <h2 class="h6 mb-2">Ficha técnica</h2>
+  <p class="small text-muted mb-2">PDF con la fotografía, los datos base, las alertas y el historial operativo, listo para imprimir o presentar en una fiscalización.</p>
+  <form method="get" action="{{ url_for('reportes.ficha', maquinaria_id=maquina.ID_Maquinaria) }}" class="row g-2 align-items-center">
+    <div class="col-auto"><label class="col-form-label small" for="periodo">Historial operativo:</label></div>
+    <div class="col-auto">
+      <select id="periodo" name="periodo" class="form-select form-select-sm">
+        <option value="30">Últimos 30 días</option><option value="90" selected>Últimos 90 días</option>
+        <option value="180">Últimos 180 días</option><option value="365">Último año</option>
+        <option value="todo">Historial completo</option>
+      </select>
+    </div>
+    <div class="col-auto"><button class="btn btn-primary btn-sm" formtarget="_blank">Ver / imprimir</button></div>
+    <div class="col-auto"><button class="btn btn-outline-secondary btn-sm" name="descargar" value="1">Descargar PDF</button></div>
+  </form>
+</div></div>
+
+{% endblock %}

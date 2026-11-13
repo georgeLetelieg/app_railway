@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% from "alertas/_macros.html" import item_badge %}
+{% block title %}Mantenciones {{ maquina.Patente }} · Gestión de Flota{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb">
+  <li class="breadcrumb-item"><a href="{{ url_for('maquinaria.lista') }}">Flota</a></li>
+  <li class="breadcrumb-item"><a href="{{ url_for('maquinaria.perfil', maquinaria_id=maquina.ID_Maquinaria) }}">{{ maquina.Patente }}</a></li>
+  <li class="breadcrumb-item active">Mantenciones</li>
+</ol></nav>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <h1 class="h4 m-0">Historial de mantenciones · {{ maquina.Patente }} <span class="text-muted fs-6">({{ total }})</span></h1>
+  {% if puede_escribir %}<a href="{{ url_for('mantenciones.nueva', maquinaria_id=maquina.ID_Maquinaria) }}" class="btn btn-primary">+ Registrar mantención</a>{% endif %}
+</div>
+
+<div class="card mb-3"><div class="card-body py-2 small">
+  <strong>Próxima mantención preventiva:</strong> {{ meta.valor_texto }} {{ item_badge(meta.estado) }}
+  <span class="text-muted">{{ meta.detalle }}</span>
+</div></div>
+
+<form method="get" class="row g-2 mb-3">
+  <div class="col-12 col-md-8"><input type="search" name="q" value="{{ q }}" class="form-control" placeholder="Buscar en el detalle de los trabajos (ej: filtro, hidráulico)"></div>
+  <div class="col-6 col-md-2 d-grid"><button class="btn btn-outline-secondary">Buscar</button></div>
+  <div class="col-6 col-md-2 d-grid"><a class="btn btn-link" href="{{ url_for('mantenciones.lista', maquinaria_id=maquina.ID_Maquinaria) }}">Limpiar</a></div>
+</form>
+
+{% for r in registros %}
+  {% set base = {'maquinaria_id': maquina.ID_Maquinaria, 'registro_id': r.ID_Registro} %}
+  <div class="card mb-3 shadow-sm"><div class="card-body">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+      <div>
+        <span class="fw-bold">{{ r.Fecha_Mantencion.strftime('%d-%m-%Y') }}</span>
+        <span class="text-muted">· lectura al ingreso: <strong>{{ r.Horometro_Mecanico|num_es }}</strong></span>
+      </div>
+      {% if puede_escribir %}
+      <div class="d-flex gap-2">
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('mantenciones.editar', **base) }}">Editar</a>
+        <form method="post" action="{{ url_for('mantenciones.eliminar', **base) }}" class="m-0"
+              onsubmit="return confirm('¿Eliminar este registro de mantención? Esta acción no se puede deshacer.');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-sm btn-outline-danger">Eliminar</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+    {% if r.Detalle_Trabajo|length > 500 %}
+      <details>
+        <summary style="white-space: pre-wrap; cursor: pointer;">{{ r.Detalle_Trabajo[:300] }}… <span class="text-primary">Ver completo</span></summary>
+        <div class="mt-2" style="white-space: pre-wrap;">{{ r.Detalle_Trabajo }}</div>
+      </details>
+    {% else %}
+      <div style="white-space: pre-wrap;">{{ r.Detalle_Trabajo }}</div>
+    {% endif %}
+    <div class="small text-muted mt-2">Registrado por {{ r.Nombre_Completo }}</div>
+  </div></div>
+{% else %}
+  <div class="alert alert-light border">{{ 'No hay mantenciones que coincidan con la búsqueda.' if q else 'Aún no hay mantenciones registradas para esta maquinaria.' }}</div>
+{% endfor %}
+
+{% if paginas > 1 %}
+<nav class="d-flex justify-content-between align-items-center">
+  <span class="small text-muted">Página {{ pagina }} de {{ paginas }}</span>
+  <div class="btn-group">
+    {% if pagina > 1 %}<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('mantenciones.lista', maquinaria_id=maquina.ID_Maquinaria, pagina=pagina-1, q=q) }}">Anterior</a>{% endif %}
+    {% if pagina < paginas %}<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('mantenciones.lista', maquinaria_id=maquina.ID_Maquinaria, pagina=pagina+1, q=q) }}">Siguiente</a>{% endif %}
+  </div>
+</nav>
+{% endif %}
+{% endblock %}

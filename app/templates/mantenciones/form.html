@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% set editando = registro is not none %}
+{% block title %}{{ 'Editar' if editando else 'Registrar' }} mantención · {{ maquina.Patente }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb">
+  <li class="breadcrumb-item"><a href="{{ url_for('maquinaria.lista') }}">Flota</a></li>
+  <li class="breadcrumb-item"><a href="{{ url_for('maquinaria.perfil', maquinaria_id=maquina.ID_Maquinaria) }}">{{ maquina.Patente }}</a></li>
+  <li class="breadcrumb-item"><a href="{{ url_for('mantenciones.lista', maquinaria_id=maquina.ID_Maquinaria) }}">Mantenciones</a></li>
+  <li class="breadcrumb-item active">{{ 'Editar' if editando else 'Registrar' }}</li>
+</ol></nav>
+<div class="row justify-content-center"><div class="col-12 col-lg-9">
+<div class="card shadow-sm"><div class="card-body p-4">
+  <h1 class="h4 mb-3">{{ 'Editar mantención' if editando else 'Registrar mantención' }} · {{ maquina.Patente }}</h1>
+  <form method="post" novalidate
+        action="{{ url_for('mantenciones.editar', maquinaria_id=maquina.ID_Maquinaria, registro_id=registro.ID_Registro) if editando else url_for('mantenciones.nueva', maquinaria_id=maquina.ID_Maquinaria) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label for="fecha" class="form-label">Fecha de la intervención</label>
+        <input type="date" id="fecha" name="fecha" class="form-control" max="{{ hoy }}" required value="{{ datos.get('fecha', '') }}">
+      </div>
+      <div class="col-md-4">
+        <label for="lectura" class="form-label">Horómetro / kilometraje</label>
+        <input id="lectura" name="lectura" inputmode="decimal" class="form-control" required placeholder="Ej: 1.472,5" value="{{ datos.get('lectura', '') }}">
+        <div class="form-text">Lectura exacta al ingresar al taller.</div>
+      </div>
+      <div class="col-12">
+        <label for="detalle" class="form-label">Trabajo realizado</label>
+        <textarea id="detalle" name="detalle" class="form-control" rows="12" required
+                  placeholder="Transcribe el reporte del mecánico: diagnóstico, reparaciones, repuestos cambiados…">{{ datos.get('detalle', '') }}</textarea>
+        <div class="form-text"><span id="contador">0</span> caracteres. Puedes escribir con total libertad (hasta unos 60.000 caracteres); se conservan los saltos de línea.</div>
+      </div>
+      {% if not editando %}
+      <div class="col-12"><div class="border rounded p-3 bg-light">
+        <div class="fw-semibold mb-1">Programar la próxima mantención preventiva <span class="text-muted small">(opcional)</span></div>
+        <div class="row g-2 align-items-center">
+          <div class="col-auto"><label for="intervalo" class="col-form-label small">Próxima mantención en</label></div>
+          <div class="col-auto"><input id="intervalo" name="intervalo" inputmode="decimal" class="form-control form-control-sm" style="width: 8rem;" placeholder="Ej: 250" value="{{ datos.get('intervalo', '') }}"></div>
+          <div class="col-auto"><span class="small text-muted">horas desde esta lectura. Actualiza la alerta de mantención del perfil.</span></div>
+        </div>
+      </div></div>
+      {% endif %}
+    </div>
+    <div class="d-flex gap-2 mt-4">
+      <button type="submit" class="btn btn-primary">{{ 'Guardar cambios' if editando else 'Registrar mantención' }}</button>
+      <a class="btn btn-outline-secondary" href="{{ url_for('mantenciones.lista', maquinaria_id=maquina.ID_Maquinaria) }}">Cancelar</a>
+    </div>
+  </form>
+</div></div>
+</div></div>
+<script>
+  (function () {
+    var t = document.getElementById('detalle'), c = document.getElementById('contador');
+    function actualizar() { c.textContent = t.value.length.toLocaleString('es-CL'); }
+    t.addEventListener('input', actualizar); actualizar();
+  })();
+</script>
+{% endblock %}

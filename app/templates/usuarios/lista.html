@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Usuarios · Gestión de Flota{% endblock %}
+{% macro badge(estado) -%}
+  {% set m = {'activo': 'success', 'inactivo': 'secondary', 'bloqueado': 'danger'} %}
+  <span class="badge text-bg-{{ m[estado] }}">{{ estados[estado] }}</span>
+{%- endmacro %}
+{% macro accion(usuario, nombre_accion, texto, clase, confirmar=None) -%}
+  <form method="post" action="{{ url_for('usuarios.cambiar_estado', usuario_id=usuario.ID_Usuario) }}" class="d-inline"
+        {% if confirmar %}onsubmit="return confirm('{{ confirmar }}');"{% endif %}>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="accion" value="{{ nombre_accion }}">
+    <button type="submit" class="btn btn-sm btn-outline-{{ clase }}">{{ texto }}</button>
+  </form>
+{%- endmacro %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <h1 class="h4 m-0">Usuarios <span class="text-muted fs-6">({{ total }})</span></h1>
+  <a href="{{ url_for('usuarios.nuevo') }}" class="btn btn-primary">+ Nuevo usuario</a>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-3"><div class="card text-center"><div class="card-body py-2"><div class="h4 mb-0">{{ total }}</div><div class="small text-muted">Total</div></div></div></div>
+  <div class="col-6 col-md-3"><div class="card text-center border-success"><div class="card-body py-2"><div class="h4 mb-0 text-success">{{ conteo.activo }}</div><div class="small text-muted">Activos</div></div></div></div>
+  <div class="col-6 col-md-3"><div class="card text-center border-secondary"><div class="card-body py-2"><div class="h4 mb-0 text-secondary">{{ conteo.inactivo }}</div><div class="small text-muted">Inactivos</div></div></div></div>
+  <div class="col-6 col-md-3"><div class="card text-center border-danger"><div class="card-body py-2"><div class="h4 mb-0 text-danger">{{ conteo.bloqueado }}</div><div class="small text-muted">Bloqueados</div></div></div></div>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+  <div class="col-12 col-md-6"><input type="search" name="q" value="{{ busqueda }}" class="form-control" placeholder="Buscar por nombre o correo" aria-label="Buscar"></div>
+  <div class="col-8 col-md-4">
+    <select name="estado" class="form-select" aria-label="Estado">
+      <option value="">Todos los estados</option>
+      {% for clave, texto in estados.items() %}<option value="{{ clave }}" {{ 'selected' if estado == clave }}>{{ texto }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="col-4 col-md-2 d-grid"><button class="btn btn-outline-secondary">Filtrar</button></div>
+</form>
+
+<div class="table-responsive">
+<table class="table table-sm table-striped align-middle bg-white">
+  <thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead>
+  <tbody>
+  {% for u in usuarios %}
+    <tr>
+      <td>{{ u.Nombre_Completo }}{% if u.es_yo %} <span class="text-muted small">(tú)</span>{% endif %}</td>
+      <td>{{ u.Correo }}</td>
+      <td><span class="badge text-bg-light border">{{ u.Nombre_Rol }}</span></td>
+      <td>
+        {{ badge(u.estado) }}
+        {% if u.bloqueado_hasta %}<div class="small text-muted">hasta las {{ u.bloqueado_hasta.strftime('%H:%M') }}</div>
+        {% elif u.estado == 'activo' and u.Intentos_Fallidos %}<div class="small text-muted">{{ u.Intentos_Fallidos }} intento(s) fallido(s)</div>{% endif %}
+      </td>
+      <td class="text-end text-nowrap">
+        {% if u.es_yo %}
+          <span class="text-muted small">—</span>
+        {% else %}
+          {% if u.estado == 'bloqueado' %}{{ accion(u, 'desbloquear', 'Desbloquear', 'success') }}{% endif %}
+          {% if u.estado == 'inactivo' %}
+            {{ accion(u, 'activar', 'Activar', 'primary') }}
+          {% else %}
+            {{ accion(u, 'inactivar', 'Inactivar', 'danger', '¿Inactivar la cuenta de ' ~ u.Nombre_Completo ~ '? No podrá iniciar sesión hasta que la actives de nuevo.') }}
+          {% endif %}
+        {% endif %}
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="5" class="text-center text-muted py-4">No hay usuarios que coincidan con la búsqueda.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<p class="small text-muted">Un usuario aparece como <strong>Bloqueado</strong> cuando superó los intentos fallidos de contraseña; el bloqueo se levanta solo a los {{ config.MINUTOS_BLOQUEO }} minutos, o antes con el botón «Desbloquear». Cada cambio de estado queda registrado en la auditoría.</p>
+{% endblock %}

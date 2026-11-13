@@ -1,0 +1,15 @@
+{% macro estado_badge(estado, grande=false) -%}
+  {% set clases = {'Operativa': 'success', 'En taller/Mantención': 'warning text-dark', 'Inactiva': 'secondary'} %}
+  <span class="badge text-bg-{{ clases.get(estado, 'light') }} {{ 'fs-6 px-3 py-2' if grande }}">{{ estado }}</span>
+{%- endmacro %}
+
+{% macro foto(maquina, alto='160px') -%}
+  {% if maquina.Fotografia_Principal %}
+    <img src="{{ url_for('maquinaria.foto', maquinaria_id=maquina.ID_Maquinaria) }}"
+         alt="Fotografía de {{ maquina.Patente }}" class="w-100 rounded"
+         style="height: {{ alto }}; object-fit: cover;">
+  {% else %}
+    <div class="bg-secondary-subtle text-muted d-flex align-items-center justify-content-center rounded"
+         style="height: {{ alto }};">Sin fotografía</div>
+  {% endif %}
+{%- endmacro %}

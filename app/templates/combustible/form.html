@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% set editando = carga is not none %}
+{% block title %}{{ 'Editar' if editando else 'Registrar' }} carga · Combustible{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb">
+  <li class="breadcrumb-item"><a href="{{ url_for('combustible.lista') }}">Combustible</a></li>
+  <li class="breadcrumb-item active">{{ 'Editar carga' if editando else 'Registrar carga' }}</li>
+</ol></nav>
+
+<div class="row justify-content-center"><div class="col-12 col-lg-7">
+<div class="card shadow-sm"><div class="card-body p-4">
+  <h1 class="h4 mb-3">{{ 'Editar carga de combustible' if editando else 'Registrar carga de combustible' }}</h1>
+  <form method="post" novalidate
+        action="{{ url_for('combustible.editar', carga_id=carga.ID_Carga) if editando else url_for('combustible.nueva') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="row g-3">
+      <div class="col-12">
+        <label for="maquina" class="form-label">Maquinaria</label>
+        <select id="maquina" name="maquina" class="form-select" required>
+          <option value="">Selecciona…</option>
+          {% for m in maquinas %}<option value="{{ m.ID_Maquinaria }}" {{ 'selected' if datos.get('maquina') == m.ID_Maquinaria|string }}>{{ m.Patente }} · {{ m.Modelo }} ({{ m.Tipo_Combustible }})</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label for="fecha_carga" class="form-label">Fecha y hora</label>
+        <input type="datetime-local" id="fecha_carga" name="fecha_carga" class="form-control" max="{{ ahora }}" required value="{{ datos.get('fecha_carga', '') }}">
+      </div>
+      <div class="col-md-6">
+        <label for="numero_vale" class="form-label">N° de vale <span class="text-muted small">(opcional)</span></label>
+        <input id="numero_vale" name="numero_vale" class="form-control" maxlength="50" value="{{ datos.get('numero_vale', '') }}">
+      </div>
+      <div class="col-md-6">
+        <label for="litros" class="form-label">Litros</label>
+        <input id="litros" name="litros" inputmode="decimal" class="form-control" required placeholder="Ej: 120,5" value="{{ datos.get('litros', '') }}">
+      </div>
+      <div class="col-md-6">
+        <label for="costo_total" class="form-label">Costo total ($)</label>
+        <input id="costo_total" name="costo_total" inputmode="decimal" class="form-control" required placeholder="Ej: 125.000" value="{{ datos.get('costo_total', '') }}">
+      </div>
+      <div class="col-12 form-text">Usa coma para los decimales. El costo puede escribirse con punto de miles (125.000).</div>
+    </div>
+    <div class="d-flex gap-2 mt-4">
+      <button type="submit" class="btn btn-primary">{{ 'Guardar cambios' if editando else 'Registrar carga' }}</button>
+      <a class="btn btn-outline-secondary" href="{{ url_for('combustible.lista') }}">Cancelar</a>
+    </div>
+  </form>
+</div></div>
+</div></div>
+{% endblock %}

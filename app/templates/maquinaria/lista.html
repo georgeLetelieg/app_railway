@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% from "maquinaria/_macros.html" import estado_badge, foto %}
+{% from "alertas/_macros.html" import semaforo_badge %}
+{% block title %}Flota · Gestión de Flota{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <h1 class="h4 m-0">Flota <span class="text-muted fs-6">({{ maquinas|length }})</span></h1>
+  {% if puede_escribir %}
+    <a href="{{ url_for('maquinaria.nueva') }}" class="btn btn-primary">+ Nueva maquinaria</a>
+  {% endif %}
+</div>
+
+<form method="get" class="row g-2 mb-4">
+  <div class="col-12 col-md-6">
+    <input type="search" name="q" value="{{ q }}" class="form-control" placeholder="Buscar por patente o modelo">
+  </div>
+  <div class="col-8 col-md-4">
+    <select name="estado" class="form-select">
+      <option value="">Todos los estados</option>
+      {% for e in estados %}<option value="{{ e }}" {{ 'selected' if e == estado }}>{{ e }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="col-4 col-md-2 d-grid"><button class="btn btn-outline-secondary">Filtrar</button></div>
+</form>
+
+{% if maquinas %}
+<div class="row g-3">
+  {% for m in maquinas %}
+  <div class="col-12 col-sm-6 col-lg-4">
+    <a href="{{ url_for('maquinaria.perfil', maquinaria_id=m.ID_Maquinaria) }}" class="text-decoration-none text-body">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body">
+          {{ foto(m) }}
+          <div class="d-flex justify-content-between align-items-start mt-3">
+            <div>
+              <div class="fw-bold">{{ m.Patente }}</div>
+              <div class="small text-muted">{{ m.Modelo }} · {{ m.Anio }}</div>
+            </div>
+            <div class="d-flex flex-column align-items-end gap-1">{{ estado_badge(m.Estado_Operativo_Actual) }}{{ semaforo_badge(semaforos.get(m.ID_Maquinaria)) }}</div>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+  <div class="alert alert-light border">No hay maquinaria que coincida con la búsqueda.</div>
+{% endif %}
+{% endblock %}

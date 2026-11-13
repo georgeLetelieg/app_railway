@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% from "bitacora/_macros.html" import lectura %}
+{% block title %}Registrar día · {{ maquina.Patente }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb">
+  <li class="breadcrumb-item"><a href="{{ url_for('maquinaria.lista') }}">Flota</a></li>
+  <li class="breadcrumb-item"><a href="{{ url_for('maquinaria.perfil', maquinaria_id=maquina.ID_Maquinaria) }}">{{ maquina.Patente }}</a></li>
+  <li class="breadcrumb-item"><a href="{{ url_for('bitacora.lista', maquinaria_id=maquina.ID_Maquinaria) }}">Bitácora</a></li>
+  <li class="breadcrumb-item active">Registrar día</li>
+</ol></nav>
+
+<div class="row justify-content-center"><div class="col-12 col-lg-7">
+<div class="card shadow-sm"><div class="card-body p-4">
+  <h1 class="h4 mb-1">Registrar día · {{ maquina.Patente }}</h1>
+  <p class="text-muted small">{{ maquina.Modelo }}. Horómetro: {{ lectura(lecturas.horometro, 'h') }} · Kilometraje: {{ lectura(lecturas.kilometraje, 'km') }}</p>
+
+  <div class="alert alert-info small">
+    Los registros son <strong>inalterables</strong>: una vez guardados no se pueden editar ni eliminar.
+    Si la máquina no tuvo actividad, deja las lecturas en blanco y describe el motivo en «Estado del día».
+  </div>
+
+  <form method="post" novalidate id="form-bitacora"
+        action="{{ url_for('bitacora.nuevo', maquinaria_id=maquina.ID_Maquinaria) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label for="fecha" class="form-label">Fecha</label>
+        <input type="date" id="fecha" name="fecha" class="form-control" max="{{ hoy }}" required value="{{ datos.get('fecha', '') }}">
+      </div>
+      <div class="col-md-4">
+        <label for="horometro" class="form-label">Horómetro (h)</label>
+        <input type="text" inputmode="decimal" id="horometro" name="horometro" class="form-control" placeholder="Opcional" value="{{ datos.get('horometro', '') }}">
+      </div>
+      <div class="col-md-4">
+        <label for="kilometraje" class="form-label">Kilometraje (km)</label>
+        <input type="text" inputmode="decimal" id="kilometraje" name="kilometraje" class="form-control" placeholder="Opcional" value="{{ datos.get('kilometraje', '') }}">
+      </div>
+      <div class="col-12">
+        <label for="estado_diario" class="form-label">Estado del día</label>
+        <input type="text" id="estado_diario" name="estado_diario" class="form-control" maxlength="255" list="sugerencias" required
+               placeholder="Ej: Operativo, Día en taller…" value="{{ datos.get('estado_diario', '') }}">
+        <datalist id="sugerencias">{% for s in sugerencias %}<option value="{{ s }}">{% endfor %}</datalist>
+      </div>
+    </div>
+    <div class="d-flex gap-2 mt-4">
+      <button type="submit" class="btn btn-primary">Guardar registro</button>
+      <a class="btn btn-outline-secondary" href="{{ url_for('bitacora.lista', maquinaria_id=maquina.ID_Maquinaria) }}">Cancelar</a>
+    </div>
+  </form>
+</div></div>
+</div></div>
+<script>
+  document.getElementById('form-bitacora').addEventListener('submit', function (e) {
+    if (!confirm('Este registro no podrá modificarse ni eliminarse después. ¿Confirmas que los datos son correctos?')) e.preventDefault();
+  });
+</script>
+{% endblock %}

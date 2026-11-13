@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% set editando = alerta is not none %}
+{% block title %}{{ 'Editar' if editando else 'Nueva' }} alerta · {{ maquina.Patente }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb">
+  <li class="breadcrumb-item"><a href="{{ url_for('maquinaria.lista') }}">Flota</a></li>
+  <li class="breadcrumb-item"><a href="{{ url_for('maquinaria.perfil', maquinaria_id=maquina.ID_Maquinaria) }}">{{ maquina.Patente }}</a></li>
+  <li class="breadcrumb-item active">{{ 'Editar alerta' if editando else 'Nueva alerta' }}</li>
+</ol></nav>
+<div class="row justify-content-center"><div class="col-12 col-lg-7">
+<div class="card shadow-sm"><div class="card-body p-4">
+  <h1 class="h4 mb-1">{{ 'Editar alerta' if editando else 'Nueva alerta personalizada' }} · {{ maquina.Patente }}</h1>
+  <p class="text-muted small">Crea un recordatorio a medida para esta maquinaria, por ejemplo «Renovación de neumáticos delanteros».
+    Se notificará desde {{ config.ALERTA_DIAS_PERSONALIZADAS }} día(s) antes de la fecha de vencimiento.</p>
+  <form method="post" novalidate
+        action="{{ url_for('personalizadas.editar', maquinaria_id=maquina.ID_Maquinaria, alerta_id=alerta.ID_Alerta_Personalizada) if editando else url_for('personalizadas.nueva', maquinaria_id=maquina.ID_Maquinaria) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="row g-3">
+      <div class="col-12">
+        <label for="titulo" class="form-label">Título de la alerta</label>
+        <input id="titulo" name="titulo" class="form-control" maxlength="255" required autofocus value="{{ datos.get('titulo', '') }}">
+      </div>
+      <div class="col-md-6">
+        <label for="fecha" class="form-label">Fecha de vencimiento</label>
+        <input type="date" id="fecha" name="fecha" class="form-control" min="{{ fecha_min }}" max="{{ fecha_max }}" required value="{{ datos.get('fecha', '') }}">
+      </div>
+    </div>
+    <div class="d-flex gap-2 mt-4">
+      <button type="submit" class="btn btn-primary">{{ 'Guardar cambios' if editando else 'Crear alerta' }}</button>
+      <a class="btn btn-outline-secondary" href="{{ url_for('maquinaria.perfil', maquinaria_id=maquina.ID_Maquinaria) }}">Cancelar</a>
+    </div>
+  </form>
+</div></div>
+</div></div>
+{% endblock %}

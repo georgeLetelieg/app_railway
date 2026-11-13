@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% from "maquinaria/_macros.html" import foto %}
+{% set editando = maquina is not none %}
+{% set editable = (not editando) or puede_corregir_base %}
+{% block title %}{{ 'Editar' if editando else 'Nueva' }} maquinaria · Gestión de Flota{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb">
+  <li class="breadcrumb-item"><a href="{{ url_for('maquinaria.lista') }}">Flota</a></li>
+  <li class="breadcrumb-item active">{{ 'Editar ' ~ maquina.Patente if editando else 'Nueva maquinaria' }}</li>
+</ol></nav>
+
+<div class="row justify-content-center"><div class="col-12 col-lg-8">
+<div class="card shadow-sm"><div class="card-body p-4">
+  <h1 class="h4 mb-4">{{ 'Editar perfil' if editando else 'Nueva maquinaria' }}</h1>
+  <form method="post" enctype="multipart/form-data" novalidate
+        action="{{ url_for('maquinaria.editar', maquinaria_id=maquina.ID_Maquinaria) if editando else url_for('maquinaria.nueva') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="row g-3">
+      {% if not editable %}
+        <div class="col-12"><div class="alert alert-secondary small mb-0">
+          Los datos base son inmutables. Aquí solo puedes cambiar el estado operativo y la fotografía.
+        </div></div>
+        <div class="col-md-6"><label class="form-label">Patente</label><input class="form-control" value="{{ maquina.Patente }}" disabled></div>
+        <div class="col-md-6"><label class="form-label">Modelo</label><input class="form-control" value="{{ maquina.Modelo }}" disabled></div>
+        <div class="col-md-4"><label class="form-label">Año</label><input class="form-control" value="{{ maquina.Anio }}" disabled></div>
+        <div class="col-md-4"><label class="form-label">Combustible</label><input class="form-control" value="{{ maquina.Tipo_Combustible }}" disabled></div>
+        <div class="col-md-4"><label class="form-label">N° de chasis</label><input class="form-control" value="{{ maquina.Numero_Chasis }}" disabled></div>
+      {% else %}
+        {% if editando %}<div class="col-12"><div class="alert alert-warning small mb-0">Estás corrigiendo datos base. Cada cambio queda registrado en la auditoría (quién, cuándo y el valor anterior).</div></div>{% endif %}
+        <div class="col-md-6">
+          <label for="patente" class="form-label">Patente</label>
+          <input id="patente" name="patente" class="form-control text-uppercase" maxlength="20" required value="{{ datos.get('patente', '') }}">
+        </div>
+        <div class="col-md-6">
+          <label for="modelo" class="form-label">Modelo</label>
+          <input id="modelo" name="modelo" class="form-control" maxlength="100" required value="{{ datos.get('modelo', '') }}">
+        </div>
+        <div class="col-md-4">
+          <label for="anio" class="form-label">Año</label>
+          <input id="anio" name="anio" type="number" class="form-control" min="1900" required value="{{ datos.get('anio', '') }}">
+        </div>
+        <div class="col-md-4">
+          <label for="combustible" class="form-label">Combustible</label>
+          <select id="combustible" name="combustible" class="form-select" required>
+            <option value="">Selecciona…</option>
+            {% for t in tipos %}<option value="{{ t }}" {{ 'selected' if datos.get('combustible') == t }}>{{ t }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label for="chasis" class="form-label">N° de chasis</label>
+          <input id="chasis" name="chasis" class="form-control text-uppercase" maxlength="100" required value="{{ datos.get('chasis', '') }}">
+        </div>
+      {% endif %}
+
+      <div class="col-md-6">
+        <label for="estado" class="form-label">Estado operativo</label>
+        <select id="estado" name="estado" class="form-select" required>
+          {% for e in estados %}<option value="{{ e }}" {{ 'selected' if datos.get('estado') == e }}>{{ e }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label for="foto" class="form-label">Fotografía principal <span class="text-muted small">(JPG, PNG o WEBP, máx. 5 MB)</span></label>
+        <input id="foto" name="foto" type="file" class="form-control" accept="image/jpeg,image/png,image/webp">
+      </div>
+      {% if editando and maquina.Fotografia_Principal %}
+        <div class="col-12">
+          <div class="row g-3 align-items-center">
+            <div class="col-5 col-md-3">{{ foto(maquina, '90px') }}</div>
+            <div class="col-7 col-md-9">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="quitar_foto" id="quitar_foto" value="1">
+                <label class="form-check-label" for="quitar_foto">Quitar la fotografía actual</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+    <div class="d-flex gap-2 mt-4">
+      <button type="submit" class="btn btn-primary">{{ 'Guardar cambios' if editando else 'Registrar maquinaria' }}</button>
+      <a class="btn btn-outline-secondary"
+         href="{{ url_for('maquinaria.perfil', maquinaria_id=maquina.ID_Maquinaria) if editando else url_for('maquinaria.lista') }}">Cancelar</a>
+    </div>
+  </form>
+</div></div>
+</div></div>
+{% endblock %}

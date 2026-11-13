@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Combustible · Gestión de Flota{% endblock %}
+{% block content %}
+{% set qs = {'desde': filtros.desde, 'hasta': filtros.hasta, 'maquina': filtros.maquina} %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <h1 class="h4 m-0">Combustible</h1>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-secondary" href="{{ url_for('combustible.exportar', **qs) }}">Exportar CSV</a>
+    {% if puede_escribir %}<a href="{{ url_for('combustible.nueva', maquina=filtros.maquina) }}" class="btn btn-primary">+ Registrar carga</a>{% endif %}
+  </div>
+</div>
+
+<form method="get" class="row g-2 align-items-end mb-4">
+  <div class="col-12 col-md-4">
+    <label class="form-label small mb-0" for="maquina">Maquinaria</label>
+    <select id="maquina" name="maquina" class="form-select">
+      <option value="">Toda la flota</option>
+      {% for m in maquinas %}<option value="{{ m.ID_Maquinaria }}" {{ 'selected' if filtros.maquina == m.ID_Maquinaria }}>{{ m.Patente }} · {{ m.Modelo }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="col-6 col-md-3"><label class="form-label small mb-0" for="desde">Desde</label><input type="date" id="desde" name="desde" value="{{ filtros.desde }}" class="form-control"></div>
+  <div class="col-6 col-md-3"><label class="form-label small mb-0" for="hasta">Hasta</label><input type="date" id="hasta" name="hasta" value="{{ filtros.hasta }}" class="form-control"></div>
+  <div class="col-12 col-md-2 d-grid"><button class="btn btn-outline-secondary">Filtrar</button></div>
+</form>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3"><div class="card text-center"><div class="card-body py-3"><div class="h4 mb-0">{{ totales.cargas }}</div><div class="small text-muted">Cargas</div></div></div></div>
+  <div class="col-6 col-md-3"><div class="card text-center"><div class="card-body py-3"><div class="h4 mb-0">{{ totales.litros|num_es }} L</div><div class="small text-muted">Litros</div></div></div></div>
+  <div class="col-6 col-md-3"><div class="card text-center"><div class="card-body py-3"><div class="h4 mb-0">{{ totales.costo|clp }}</div><div class="small text-muted">Costo total</div></div></div></div>
+  <div class="col-6 col-md-3"><div class="card text-center"><div class="card-body py-3"><div class="h4 mb-0">{{ totales.por_litro|clp }}</div><div class="small text-muted">Costo por litro</div></div></div></div>
+</div>
+
+<h2 class="h6">Cuadratura por maquinaria</h2>
+<div class="table-responsive mb-4">
+<table class="table table-sm table-striped align-middle bg-white">
+  <thead><tr><th>Maquinaria</th><th class="text-end">Cargas</th><th class="text-end">Litros</th><th class="text-end">Costo</th><th class="text-end">Costo por litro</th></tr></thead>
+  <tbody>
+  {% for f in resumen %}
+    <tr>
+      <td><a href="{{ url_for('maquinaria.perfil', maquinaria_id=f.ID_Maquinaria) }}">{{ f.Patente }}</a> <span class="small text-muted">{{ f.Modelo }}</span></td>
+      <td class="text-end">{{ f.cargas }}</td>
+      <td class="text-end">{{ f.litros|num_es }}</td>
+      <td class="text-end">{{ f.costo|clp }}</td>
+      <td class="text-end">{{ f.por_litro|clp }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="5" class="text-center text-muted py-3">Sin cargas en el período seleccionado.</td></tr>
+  {% endfor %}
+  </tbody>
+  {% if resumen %}
+  <tfoot class="table-group-divider fw-bold"><tr>
+    <td>Total</td><td class="text-end">{{ totales.cargas }}</td><td class="text-end">{{ totales.litros|num_es }}</td>
+    <td class="text-end">{{ totales.costo|clp }}</td><td class="text-end">{{ totales.por_litro|clp }}</td>
+  </tr></tfoot>
+  {% endif %}
+</table>
+</div>
+
+<h2 class="h6">Detalle de cargas</h2>
+<div class="table-responsive">
+<table class="table table-sm table-striped align-middle bg-white">
+  <thead><tr><th>Fecha</th><th>Maquinaria</th><th>Vale</th><th class="text-end">Litros</th><th class="text-end">Costo</th><th class="text-end">$/litro</th><th>Registrado por</th>{% if puede_escribir %}<th></th>{% endif %}</tr></thead>
+  <tbody>
+  {% for c in cargas %}
+    <tr>
+      <td class="text-nowrap">{{ c.Fecha_Carga.strftime('%d-%m-%Y %H:%M') }}</td>
+      <td><a href="{{ url_for('maquinaria.perfil', maquinaria_id=c.ID_Maquinaria) }}">{{ c.Patente }}</a></td>
+      <td>{{ c.Numero_Vale or '—' }}</td>
+      <td class="text-end">{{ c.Litros_Cargados|num_es }}</td>
+      <td class="text-end">{{ c.Costo_Total|clp }}</td>
+      <td class="text-end">{{ c.por_litro|clp }}</td>
+      <td class="small text-muted">{{ c.Nombre_Completo }}</td>
+      {% if puede_escribir %}
+      <td class="text-end text-nowrap">
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('combustible.editar', carga_id=c.ID_Carga) }}">Editar</a>
+        <form method="post" action="{{ url_for('combustible.eliminar', carga_id=c.ID_Carga) }}" class="d-inline"
+              onsubmit="return confirm('¿Eliminar esta carga de combustible? Esta acción no se puede deshacer.');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-sm btn-outline-danger">Eliminar</button>
+        </form>
+      </td>
+      {% endif %}
+    </tr>
+  {% else %}
+    <tr><td colspan="8" class="text-center text-muted py-4">No hay cargas registradas en el período.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+{% if paginas > 1 %}
+<nav class="d-flex justify-content-between align-items-center">
+  <span class="small text-muted">Página {{ pagina }} de {{ paginas }}</span>
+  <div class="btn-group">
+    {% if pagina > 1 %}<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('combustible.lista', pagina=pagina-1, **qs) }}">Anterior</a>{% endif %}
+    {% if pagina < paginas %}<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('combustible.lista', pagina=pagina+1, **qs) }}">Siguiente</a>{% endif %}
+  </div>
+</nav>
+{% endif %}
+{% endblock %}

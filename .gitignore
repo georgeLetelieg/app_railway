@@ -1,0 +1,11 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+# Archivos subidos por los usuarios (se conservan solo las carpetas)
+uploads/fotos/*
+uploads/documentos/*
+!uploads/fotos/.gitkeep
+!uploads/documentos/.gitkeep

@@ -1,0 +1,4 @@
+{% macro lectura(l, unidad) -%}
+  {% if l %}<strong>{{ '%.2f'|format(l.valor) }} {{ unidad }}</strong> <span class="text-muted small">({{ l.fecha.strftime('%d-%m-%Y') }})</span>{% else %}<span class="text-muted">sin lecturas</span>{% endif %}
+{%- endmacro %}
+{% macro num(v) -%}{% if v is none %}<span class="text-muted">—</span>{% else %}{{ '%.2f'|format(v) }}{% endif %}{%- endmacro %}

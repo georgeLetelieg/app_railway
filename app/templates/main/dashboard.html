@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "alertas/_macros.html" import item_badge %}
+{% block title %}Panel de control · Gestión de Flota{% endblock %}
+{% block content %}
+<h1 class="h4 mb-3">Bienvenido, {{ nombre }}</h1>
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card text-center"><div class="card-body">
+      <div class="display-6">{{ resumen.total }}</div><div class="text-muted small">Total de la flota</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-md-3">
+    <a class="text-decoration-none" href="{{ url_for('maquinaria.lista', estado='Operativa') }}">
+    <div class="card text-center border-success"><div class="card-body">
+      <div class="display-6 text-success">{{ resumen['Operativa'] }}</div><div class="text-muted small">Operativas</div>
+    </div></div></a>
+  </div>
+  <div class="col-6 col-md-3">
+    <a class="text-decoration-none" href="{{ url_for('maquinaria.lista', estado='En taller/Mantención') }}">
+    <div class="card text-center border-warning"><div class="card-body">
+      <div class="display-6 text-warning">{{ resumen['En taller/Mantención'] }}</div><div class="text-muted small">En taller / mantención</div>
+    </div></div></a>
+  </div>
+  <div class="col-6 col-md-3">
+    <a class="text-decoration-none" href="{{ url_for('maquinaria.lista', estado='Inactiva') }}">
+    <div class="card text-center border-secondary"><div class="card-body">
+      <div class="display-6 text-secondary">{{ resumen['Inactiva'] }}</div><div class="text-muted small">Inactivas</div>
+    </div></div></a>
+  </div>
+</div>
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <h2 class="h6 m-0">Alertas de vencimiento</h2>
+  <a href="{{ url_for('alertas.centro') }}" class="small">Ver centro de alertas</a>
+</div>
+{% if principales %}
+<div class="table-responsive mb-4"><table class="table table-sm align-middle bg-white">
+  {% for a in principales %}
+  <tr>
+    <td><a href="{{ url_for('maquinaria.perfil', maquinaria_id=a.maquina.ID_Maquinaria) }}">{{ a.maquina.Patente }}</a></td>
+    <td>{{ a.nombre }}</td><td>{{ item_badge(a.estado) }}</td><td class="small text-muted">{{ a.detalle }}</td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% else %}<div class="alert alert-success">No hay vencimientos próximos ni vencidos.</div>{% endif %}
+{% if alertas.incompleto %}<p class="small text-muted">{{ alertas.incompleto }} maquinaria(s) con datos de vencimiento incompletos.</p>{% endif %}
+<a href="{{ url_for('maquinaria.lista') }}" class="btn btn-primary">Ver flota</a>
+{% endblock %}

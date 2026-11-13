@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Auditoría · Gestión de Flota{% endblock %}
+{% macro valor(v) -%}
+  {% if v is none or v == '' %}<span class="text-muted">—</span>
+  {% elif v|length > 160 %}<details><summary style="cursor: pointer;">{{ v[:100] }}… <span class="text-primary">ver completo</span></summary><div style="white-space: pre-wrap;">{{ v }}</div></details>
+  {% else %}{{ v }}{% endif %}
+{%- endmacro %}
+{% block content %}
+{% set qs = {'tabla': filtros.tabla, 'maquina': filtros.maquina, 'desde': filtros.desde, 'hasta': filtros.hasta} %}
+<h1 class="h4 mb-1">Auditoría</h1>
+<p class="text-muted small">Registro de correcciones y eliminaciones de datos: quién las hizo, cuándo y cómo era el dato antes. Es de solo lectura y no puede modificarse.</p>
+
+<form method="get" class="row g-2 align-items-end mb-3">
+  <div class="col-6 col-md-3">
+    <label class="form-label small mb-0" for="tabla">Dato</label>
+    <select id="tabla" name="tabla" class="form-select">
+      <option value="">Todos</option>
+      {% for clave, texto in tablas.items() %}<option value="{{ clave }}" {{ 'selected' if filtros.tabla == clave }}>{{ texto }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="col-6 col-md-3">
+    <label class="form-label small mb-0" for="maquina">Maquinaria</label>
+    <select id="maquina" name="maquina" class="form-select">
+      <option value="">Toda la flota</option>
+      {% for m in maquinas %}<option value="{{ m.ID_Maquinaria }}" {{ 'selected' if filtros.maquina == m.ID_Maquinaria }}>{{ m.Patente }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="col-6 col-md-2"><label class="form-label small mb-0" for="desde">Desde</label><input type="date" id="desde" name="desde" value="{{ filtros.desde }}" class="form-control"></div>
+  <div class="col-6 col-md-2"><label class="form-label small mb-0" for="hasta">Hasta</label><input type="date" id="hasta" name="hasta" value="{{ filtros.hasta }}" class="form-control"></div>
+  <div class="col-12 col-md-2 d-grid"><button class="btn btn-outline-secondary">Filtrar</button></div>
+</form>
+
+<div class="table-responsive">
+<table class="table table-sm align-middle bg-white">
+  <thead><tr><th>Fecha y hora</th><th>Usuario</th><th>Acción</th><th>Dato</th><th>Detalle</th></tr></thead>
+  <tbody>
+  {% for r in registros %}
+    <tr>
+      <td class="text-nowrap small">{{ r.Fecha_Hora.strftime('%d-%m-%Y %H:%M') }}</td>
+      <td>{{ r.Nombre_Completo }}</td>
+      <td><span class="badge text-bg-{{ 'danger' if r.Accion == 'Eliminación' else 'warning text-dark' }}">{{ r.Accion }}</span></td>
+      <td>{{ r.tabla_texto }}{% if r.referencia %}<div class="small text-muted">{{ r.referencia }}</div>{% endif %}</td>
+      <td class="small">
+        {% for campo, antes, despues in r.cambios %}
+          <div>
+            <strong>{{ campo }}:</strong>
+            {% if r.Accion == 'Eliminación' %}{{ valor(antes) }}
+            {% else %}{{ valor(antes) }} <span class="text-muted">→</span> {{ valor(despues) }}{% endif %}
+          </div>
+        {% endfor %}
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="5" class="text-center text-muted py-4">No hay registros de auditoría con esos filtros.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+{% if paginas > 1 %}
+<nav class="d-flex justify-content-between align-items-center">
+  <span class="small text-muted">{{ total }} registros · página {{ pagina }} de {{ paginas }}</span>
+  <div class="btn-group">
+    {% if pagina > 1 %}<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('auditoria.lista', pagina=pagina-1, **qs) }}">Anterior</a>{% endif %}
+    {% if pagina < paginas %}<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('auditoria.lista', pagina=pagina+1, **qs) }}">Siguiente</a>{% endif %}
+  </div>
+</nav>
+{% endif %}
+{% endblock %}

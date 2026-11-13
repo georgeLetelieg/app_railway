@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Nuevo usuario · Gestión de Flota{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb">
+  <li class="breadcrumb-item"><a href="{{ url_for('usuarios.lista') }}">Usuarios</a></li>
+  <li class="breadcrumb-item active">Nuevo usuario</li>
+</ol></nav>
+
+<div class="row justify-content-center"><div class="col-12 col-lg-7">
+<div class="card shadow-sm"><div class="card-body p-4">
+  <h1 class="h4 mb-3">Nuevo usuario</h1>
+  <form method="post" action="{{ url_for('usuarios.nuevo') }}" novalidate id="form-usuario" autocomplete="off">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="row g-3">
+      <div class="col-12">
+        <label for="nombre" class="form-label">Nombre completo</label>
+        <input id="nombre" name="nombre" class="form-control" maxlength="150" required autofocus autocomplete="off" value="{{ datos.get('nombre', '') }}">
+      </div>
+      <div class="col-12">
+        <label for="correo" class="form-label">Correo electrónico</label>
+        <input id="correo" name="correo" type="email" class="form-control" maxlength="150" required autocomplete="off" value="{{ datos.get('correo', '') }}">
+        <div class="form-text">Es el nombre de usuario con el que iniciará sesión.</div>
+      </div>
+      <div class="col-12">
+        <label for="rol" class="form-label">Rol</label>
+        <select id="rol" name="rol" class="form-select" required>
+          <option value="">Selecciona un rol…</option>
+          {% for r in roles %}
+            <option value="{{ r.ID_Rol }}" data-desc="{{ descripciones.get(r.Nombre_Rol, '') }}" {{ 'selected' if datos.get('rol') == r.ID_Rol|string }}>{{ r.Nombre_Rol }}</option>
+          {% endfor %}
+        </select>
+        <div class="form-text" id="rol-ayuda">&nbsp;</div>
+      </div>
+      <div class="col-md-6">
+        <label for="password" class="form-label">Contraseña</label>
+        <input id="password" name="password" type="password" class="form-control" minlength="{{ pw_min }}" maxlength="{{ pw_max }}" required autocomplete="new-password">
+      </div>
+      <div class="col-md-6">
+        <label for="confirmar" class="form-label">Confirmar contraseña</label>
+        <input id="confirmar" name="confirmar" type="password" class="form-control" maxlength="{{ pw_max }}" required autocomplete="new-password">
+      </div>
+      <div class="col-12">
+        <div class="form-text">{{ politica }}</div>
+        <div class="form-check mt-2">
+          <input class="form-check-input" type="checkbox" id="ver-password">
+          <label class="form-check-label small" for="ver-password">Mostrar contraseñas</label>
+        </div>
+        <div class="text-danger small mt-1" id="aviso-coincidencia" hidden>Las contraseñas no coinciden.</div>
+      </div>
+    </div>
+    <div class="d-flex gap-2 mt-4">
+      <button type="submit" class="btn btn-primary">Crear usuario</button>
+      <a class="btn btn-outline-secondary" href="{{ url_for('usuarios.lista') }}">Cancelar</a>
+    </div>
+  </form>
+</div></div>
+</div></div>
+<script>
+  (function () {
+    var rol = document.getElementById('rol'), ayuda = document.getElementById('rol-ayuda');
+    function mostrarAyuda() { var o = rol.options[rol.selectedIndex]; ayuda.textContent = (o && o.dataset.desc) || '\u00a0'; }
+    rol.addEventListener('change', mostrarAyuda); mostrarAyuda();
+
+    var p1 = document.getElementById('password'), p2 = document.getElementById('confirmar'), aviso = document.getElementById('aviso-coincidencia');
+    document.getElementById('ver-password').addEventListener('change', function () {
+      p1.type = p2.type = this.checked ? 'text' : 'password';
+    });
+    function revisar() { aviso.hidden = !p2.value || p1.value === p2.value; }
+    p1.addEventListener('input', revisar); p2.addEventListener('input', revisar);
+  })();
+</script>
+{% endblock %}

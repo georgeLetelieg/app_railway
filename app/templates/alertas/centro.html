@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% from "alertas/_macros.html" import item_badge %}
+{% block title %}Alertas · Gestión de Flota{% endblock %}
+{% block content %}
+<h1 class="h4 mb-3">Centro de alertas</h1>
+<div class="row g-3 mb-2">
+  <div class="col-6 col-md-3"><div class="card text-center border-danger"><div class="card-body py-3"><div class="h3 mb-0 text-danger">{{ resumen.n_vencidas }}</div><div class="small text-muted">Vencidas</div></div></div></div>
+  <div class="col-6 col-md-3"><div class="card text-center border-warning"><div class="card-body py-3"><div class="h3 mb-0 text-warning">{{ resumen.n_por_vencer }}</div><div class="small text-muted">Por vencer</div></div></div></div>
+  <div class="col-6 col-md-3"><div class="card text-center border-secondary"><div class="card-body py-3"><div class="h3 mb-0 text-secondary">{{ resumen.n_sin_dato }}</div><div class="small text-muted">Sin registrar</div></div></div></div>
+  <div class="col-6 col-md-3"><div class="card text-center border-success"><div class="card-body py-3"><div class="h3 mb-0 text-success">{{ resumen.n_vigentes }}</div><div class="small text-muted">Vigentes</div></div></div></div>
+</div>
+<p class="small text-muted mb-1">Las cifras cuentan <strong>alertas</strong> (no maquinarias). Las vencidas, por vencer y sin registrar son las que aparecen en la tabla.</p>
+<p class="small text-muted">Por maquinaria ({{ resumen.maquinas }} activa(s)): {{ resumen.rojo }} con vencimientos · {{ resumen.amarillo }} por vencer · {{ resumen.incompleto }} con datos incompletos · {{ resumen.verde }} al día.</p>
+<p class="small text-muted">Aviso a {{ config.ALERTA_DIAS_DOCUMENTOS }} días o menos para revisión técnica y permiso de circulación, y a {{ config.ALERTA_HORAS_MANTENCION }} horas o menos para la próxima mantención. No incluye maquinaria inactiva.</p>
+
+<div class="table-responsive">
+<table class="table table-sm align-middle bg-white">
+  <thead><tr><th>Maquinaria</th><th>Concepto</th><th>Valor</th><th>Estado</th><th>Detalle</th>{% if puede_escribir %}<th></th>{% endif %}</tr></thead>
+  <tbody>
+  {% for a in alertas %}
+    <tr>
+      <td><a href="{{ url_for('maquinaria.perfil', maquinaria_id=a.maquina.ID_Maquinaria) }}">{{ a.maquina.Patente }}</a> <span class="small text-muted">{{ a.maquina.Modelo }}</span></td>
+      <td>{{ a.nombre }}{% if a.personalizada %} <span class="badge text-bg-info">Personalizada</span>{% endif %}</td>
+      <td class="text-nowrap">{{ a.valor_texto }}</td>
+      <td>{{ item_badge(a.estado) }}</td>
+      <td class="small text-muted">{{ a.detalle }}</td>
+      {% if puede_escribir %}<td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{{ url_for('personalizadas.editar', maquinaria_id=a.maquina.ID_Maquinaria, alerta_id=a.alerta_id) if a.personalizada else url_for('alertas.editar', maquinaria_id=a.maquina.ID_Maquinaria) }}">Actualizar</a></td>{% endif %}
+    </tr>
+  {% else %}
+    <tr><td colspan="6" class="text-center text-success py-4">Todo al día: no hay vencimientos próximos.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

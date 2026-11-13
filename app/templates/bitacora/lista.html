@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% from "maquinaria/_macros.html" import estado_badge %}
+{% from "bitacora/_macros.html" import lectura, num %}
+{% block title %}Bitácora {{ maquina.Patente }} · Gestión de Flota{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb">
+  <li class="breadcrumb-item"><a href="{{ url_for('maquinaria.lista') }}">Flota</a></li>
+  <li class="breadcrumb-item"><a href="{{ url_for('maquinaria.perfil', maquinaria_id=maquina.ID_Maquinaria) }}">{{ maquina.Patente }}</a></li>
+  <li class="breadcrumb-item active">Bitácora</li>
+</ol></nav>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <h1 class="h4 m-0">Bitácora operativa · {{ maquina.Patente }} {{ estado_badge(maquina.Estado_Operativo_Actual) }}</h1>
+  {% if puede_escribir %}<a href="{{ url_for('bitacora.nuevo', maquinaria_id=maquina.ID_Maquinaria) }}" class="btn btn-primary">+ Registrar día</a>{% endif %}
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-12 col-md-6"><div class="card"><div class="card-body py-2">Último horómetro: {{ lectura(lecturas.horometro, 'h') }}</div></div></div>
+  <div class="col-12 col-md-6"><div class="card"><div class="card-body py-2">Último kilometraje: {{ lectura(lecturas.kilometraje, 'km') }}</div></div></div>
+</div>
+
+{% if faltantes %}
+<div class="alert alert-warning">
+  <strong>{{ faltantes|length }} día(s) sin registro</strong> en los últimos 30 días:
+  {% for d in faltantes[:10] %}
+    {% if puede_escribir %}<a href="{{ url_for('bitacora.nuevo', maquinaria_id=maquina.ID_Maquinaria, fecha=d.isoformat()) }}">{{ d.strftime('%d-%m') }}</a>{% else %}{{ d.strftime('%d-%m') }}{% endif %}{{ ', ' if not loop.last }}
+  {% endfor %}{% if faltantes|length > 10 %} y {{ faltantes|length - 10 }} más{% endif %}.
+  Registra también los días sin actividad (por ejemplo «Día en taller») para mantener la trazabilidad.
+</div>
+{% endif %}
+
+<form method="get" class="row g-2 align-items-end mb-3">
+  <div class="col-6 col-md-3"><label class="form-label small mb-0" for="desde">Desde</label><input type="date" id="desde" name="desde" value="{{ desde }}" class="form-control"></div>
+  <div class="col-6 col-md-3"><label class="form-label small mb-0" for="hasta">Hasta</label><input type="date" id="hasta" name="hasta" value="{{ hasta }}" class="form-control"></div>
+  <div class="col-6 col-md-2 d-grid"><button class="btn btn-outline-secondary">Filtrar</button></div>
+  <div class="col-6 col-md-2 d-grid"><a class="btn btn-link" href="{{ url_for('bitacora.lista', maquinaria_id=maquina.ID_Maquinaria) }}">Limpiar</a></div>
+</form>
+
+<div class="table-responsive">
+<table class="table table-sm table-striped align-middle bg-white">
+  <thead><tr><th>Fecha</th><th class="text-end">Horómetro (h)</th><th class="text-end">Kilometraje (km)</th><th>Estado del día</th><th>Registrado por</th></tr></thead>
+  <tbody>
+  {% for r in registros %}
+    <tr>
+      <td class="text-nowrap">{{ r.Fecha_Registro.strftime('%d-%m-%Y') }}</td>
+      <td class="text-end">{{ num(r.Horometro) }}</td>
+      <td class="text-end">{{ num(r.Kilometraje) }}</td>
+      <td>{{ r.Estado_Diario }}</td>
+      <td class="small text-muted">{{ r.Nombre_Completo }}<br>{{ r.Fecha_Hora_Ingreso.strftime('%d-%m-%Y %H:%M') if r.Fecha_Hora_Ingreso }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="5" class="text-center text-muted py-4">No hay registros en bitácora.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+{% if paginas > 1 %}
+<nav class="d-flex justify-content-between align-items-center">
+  <span class="small text-muted">{{ total }} registros · página {{ pagina }} de {{ paginas }}</span>
+  <div class="btn-group">
+    {% if pagina > 1 %}<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('bitacora.lista', maquinaria_id=maquina.ID_Maquinaria, pagina=pagina-1, desde=desde, hasta=hasta) }}">Anterior</a>{% endif %}
+    {% if pagina < paginas %}<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('bitacora.lista', maquinaria_id=maquina.ID_Maquinaria, pagina=pagina+1, desde=desde, hasta=hasta) }}">Siguiente</a>{% endif %}
+  </div>
+</nav>
+{% endif %}
+<p class="small text-muted mt-3 mb-0">La bitácora es inalterable: los registros no pueden modificarse ni eliminarse.</p>
+{% endblock %}

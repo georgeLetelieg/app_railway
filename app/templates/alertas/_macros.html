@@ -1,0 +1,12 @@
+{% macro semaforo_badge(s) -%}
+  {% set m = {'rojo': ('danger', 'Con vencimientos'), 'amarillo': ('warning text-dark', 'Por vencer'),
+              'incompleto': ('secondary', 'Datos incompletos'), 'verde': ('success', 'Al día')} %}
+  {% if s in m %}<span class="badge text-bg-{{ m[s][0] }}">{{ m[s][1] }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro item_badge(estado) -%}
+  {% set m = {'vencida': ('danger', 'Vencida'), 'por_vencer': ('warning text-dark', 'Por vencer'),
+              'vigente': ('success', 'Vigente'), 'sin_dato': ('secondary', 'Sin registrar'),
+              'cumplida': ('light text-dark border', 'Cumplida')} %}
+  <span class="badge text-bg-{{ m[estado][0] }}">{{ m[estado][1] }}</span>
+{%- endmacro %}
