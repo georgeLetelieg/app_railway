@@ -64,6 +64,10 @@ def bd(monkeypatch):
         CREATE TABLE bitacora_operativa(ID_Bitacora INTEGER PRIMARY KEY AUTOINCREMENT, FK_ID_Maquinaria INT NOT NULL,
             FK_ID_Usuario INT NOT NULL, Fecha_Registro DATE NOT NULL, Fecha_Hora_Ingreso DATETIME,
             Horometro DECIMAL(10,2), Kilometraje DECIMAL(10,2), Estado_Diario TEXT NOT NULL,
+            Numero_Parte TEXT UNIQUE, Faena TEXT, Operador TEXT, Horometro_Inicio DECIMAL(10,2),
+            Horas_Trabajadas DECIMAL(10,2) GENERATED ALWAYS AS (Horometro - Horometro_Inicio) STORED,
+            Turno TEXT, Hora_Comienzo TEXT, Hora_Termino TEXT, Tipo_Trabajo TEXT, Observaciones TEXT,
+            Combustible_Litros DECIMAL(10,2),
             UNIQUE (FK_ID_Maquinaria, Fecha_Registro));
         CREATE TABLE categoria_documento(ID_Categoria INTEGER PRIMARY KEY AUTOINCREMENT, Nombre_Categoria TEXT UNIQUE NOT NULL);
         INSERT INTO categoria_documento(Nombre_Categoria) VALUES ('Revisión técnica'), ('Factura de compra'),

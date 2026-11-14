@@ -169,3 +169,70 @@ def test_formato_numerico_chileno_en_lecturas(app, client, login, bd):
     assert registrar(client, h - timedelta(days=1), horometro="1.250,5").status_code == 302
     assert registrar(client, h, horometro="1251.25").status_code == 302
     assert [(f["Horometro"], f["Kilometraje"]) for f in filas(bd)] == [(1250, 30000.5), (1250.5, None), (1251.25, None)]
+
+# --------------------------------------------------------------------------
+# Parte diario de equipo (v2.3)
+# --------------------------------------------------------------------------
+def test_parte_diario_completo(app, client, login, bd):
+    preparar(client, login)
+    r = registrar(client, hoy(app), numero_parte="007429", faena="Ruta 5 km 340", operador="Juan Pérez",
+                  horometro_inicio="1.200,5", horometro="1208,75", turno="Día", hora_comienzo="08:00",
+                  hora_termino="18:30", tipo_trabajo="Carguío de áridos", observaciones="Sin novedad",
+                  petroleo="120,5", jefe_obras="Pedro Soto")
+    assert r.status_code == 302
+    f = filas(bd)[0]
+    assert (f["Numero_Parte"], f["Faena"], f["Operador"], f["Turno"], f["Jefe_Obras"]) == \
+        ("007429", "Ruta 5 km 340", "Juan Pérez", "Día", "Pedro Soto")
+    assert (f["Horometro_Inicio"], f["Horometro"], f["Horas_Trabajadas"], f["Petroleo_Litros"]) == \
+        (1200.5, 1208.75, 8.25, 120.5)
+    assert (f["Hora_Comienzo"], f["Hora_Termino"]) == ("08:00:00", "18:30:00")
+    html = client.get("/maquinaria/1/bitacora/").data.decode()
+    assert "N° 007429" in html and "Juan Pérez" in html and "8.25" in html and "08:00 a 18:30" in html
+
+
+def test_parte_sin_campos_nuevos_sigue_funcionando(app, client, login, bd):
+    preparar(client, login)
+    assert registrar(client, hoy(app), horometro="100").status_code == 302
+    f = filas(bd)[0]
+    assert f["Horometro_Inicio"] is None and f["Horas_Trabajadas"] is None and f["Faena"] is None
+
+
+def test_inicio_mayor_que_final_rechazado(app, client, login, bd):
+    preparar(client, login)
+    r = registrar(client, hoy(app), horometro_inicio="200", horometro="150")
+    assert r.status_code == 400 and filas(bd) == []
+    r = registrar(client, hoy(app), horometro_inicio="200")
+    assert r.status_code == 400 and "indica también el horómetro final".encode() in r.data
+
+
+def test_inicio_no_puede_bajar_del_final_anterior(app, client, login, bd):
+    preparar(client, login)
+    h = hoy(app)
+    assert registrar(client, h - timedelta(days=1), horometro="500").status_code == 302
+    r = registrar(client, h, horometro_inicio="490", horometro="510")
+    assert r.status_code == 400 and len(filas(bd)) == 1
+
+
+def test_final_no_puede_superar_inicio_posterior(app, client, login, bd):
+    preparar(client, login)
+    h = hoy(app)
+    assert registrar(client, h, horometro_inicio="600", horometro="610").status_code == 302
+    r = registrar(client, h - timedelta(days=1), horometro="605")
+    assert r.status_code == 400 and len(filas(bd)) == 1
+
+
+def test_numero_parte_duplicado_y_hora_invalida(app, client, login, bd):
+    preparar(client, login)
+    h = hoy(app)
+    assert registrar(client, h - timedelta(days=1), numero_parte="100").status_code == 302
+    r = registrar(client, h, numero_parte="100")
+    assert r.status_code == 400 and "ya está registrado".encode() in r.data
+    r = registrar(client, h, hora_comienzo="25:99")
+    assert r.status_code == 400 and len(filas(bd)) == 1
+
+
+def test_formulario_sugiere_horometro_inicio(app, client, login, bd):
+    preparar(client, login)
+    registrar(client, hoy(app) - timedelta(days=1), horometro="1250,5")
+    html = client.get("/maquinaria/1/bitacora/nuevo").data.decode()
+    assert 'value="1250,50"' in html and "Parte diario de equipo" in html

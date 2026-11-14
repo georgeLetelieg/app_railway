@@ -38,18 +38,24 @@
 
 <div class="table-responsive">
 <table class="table table-sm table-striped align-middle bg-white">
-  <thead><tr><th>Fecha</th><th class="text-end">Horómetro (h)</th><th class="text-end">Kilometraje (km)</th><th>Estado del día</th><th>Registrado por</th></tr></thead>
+  <thead><tr><th>Fecha / N° parte</th><th>Faena / operador</th><th class="text-end">Horómetro inicio → final (h)</th><th class="text-end">Horas</th><th class="text-end">Kilometraje (km)</th><th>Jornada</th><th>Estado del día / trabajo</th><th class="text-end">Combustible (L)</th><th>Registrado por</th></tr></thead>
   <tbody>
   {% for r in registros %}
-    <tr>
-      <td class="text-nowrap">{{ r.Fecha_Registro.strftime('%d-%m-%Y') }}</td>
-      <td class="text-end">{{ num(r.Horometro) }}</td>
+       <tr>
+      <td class="text-nowrap">{{ r.Fecha_Registro.strftime('%d-%m-%Y') }}{% if r.Numero_Parte %}<br><span class="small text-muted">N° {{ r.Numero_Parte }}</span>{% endif %}</td>
+      <td class="small">{{ r.Faena or '—' }}{% if r.Operador %}<br><span class="text-muted">Op.: {{ r.Operador }}</span>{% endif %}</td>
+      <td class="text-end text-nowrap">{% if r.Horometro_Inicio is not none %}{{ num(r.Horometro_Inicio) }} → {% endif %}{{ num(r.Horometro) }}</td>
+      <td class="text-end">{{ num(r.Horas_Trabajadas) }}</td>
       <td class="text-end">{{ num(r.Kilometraje) }}</td>
-      <td>{{ r.Estado_Diario }}</td>
+      <td class="small text-nowrap">{{ r.Turno or '' }}{% if r.comienzo or r.termino %}<br>{{ r.comienzo or '—' }} a {{ r.termino or '—' }}{% endif %}{% if not (r.Turno or r.comienzo or r.termino) %}<span class="text-muted">—</span>{% endif %}</td>
+      <td>{{ r.Estado_Diario }}
+        {% if r.Tipo_Trabajo %}<br><span class="small"><strong>Trabajo:</strong> {{ r.Tipo_Trabajo }}</span>{% endif %}
+        {% if r.Observaciones %}<br><span class="small text-muted"><strong>Obs.:</strong> {{ r.Observaciones }}</span>{% endif %}</td>
+      <td class="text-end">{{ num(r.Combustible_Litros) }}</td>
       <td class="small text-muted">{{ r.Nombre_Completo }}<br>{{ r.Fecha_Hora_Ingreso.strftime('%d-%m-%Y %H:%M') if r.Fecha_Hora_Ingreso }}</td>
     </tr>
   {% else %}
-    <tr><td colspan="5" class="text-center text-muted py-4">No hay registros en bitácora.</td></tr>
+    <tr><td colspan="9" class="text-center text-muted py-4">No hay registros en bitácora.</td></tr>
   {% endfor %}
   </tbody>
 </table>

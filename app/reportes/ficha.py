@@ -146,12 +146,16 @@ def generar_ficha(d):
     historia.append(Paragraph(_esc(d["periodo_texto"]), nota))
     historia.append(Spacer(1, 3))
     if d["bitacora"]:
-        filas = [[Paragraph(t, celda_h) for t in ("Fecha", "Horómetro (h)", "Kilometraje (km)", "Estado del día", "Registrado por")]]
+        filas = [[Paragraph(t, celda_h) for t in ("Fecha / N° parte", "Horómetro (h)", "Horas", "Km",
+                                                  "Estado del día / faena", "Operador / ingresó")]]
         for r in d["bitacora"]:
-            filas.append([Paragraph(_fecha(r["Fecha_Registro"]), celda), Paragraph(num_es(r["Horometro"]), celda),
-                          Paragraph(num_es(r["Kilometraje"]), celda), Paragraph(_esc(r["Estado_Diario"]), celda),
-                          Paragraph(_esc(r["Nombre_Completo"]), celda)])
-        historia.append(tabla(filas, [0.13, 0.14, 0.15, 0.38, 0.20]))
+            fecha = _fecha(r["Fecha_Registro"]) + (f"<br/>N° {_esc(r['Numero_Parte'])}" if r.get("Numero_Parte") else "")
+            estado = _esc(r["Estado_Diario"]) + (f"<br/><i>{_esc(r['Faena'])}</i>" if r.get("Faena") else "")
+            persona = (f"{_esc(r['Operador'])}<br/>" if r.get("Operador") else "") + _esc(r["Nombre_Completo"])
+            filas.append([Paragraph(fecha, celda), Paragraph(num_es(r["Horometro"]), celda),
+                          Paragraph(num_es(r.get("Horas_Trabajadas")), celda), Paragraph(num_es(r["Kilometraje"]), celda),
+                          Paragraph(estado, celda), Paragraph(persona, celda)])
+        historia.append(tabla(filas, [0.12, 0.13, 0.07, 0.12, 0.39, 0.17]))
         if d["truncado"]:
             historia.append(Paragraph(f"Se muestran los {len(d['bitacora'])} registros más recientes del período.", nota))
     else:

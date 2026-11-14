@@ -1,5 +1,5 @@
 -- =====================================================================
--- gestion_flota - Propuesta 3 (Flask + MySQL)  |  Versión 2.2 (auditoría)
+-- gestion_flota - Propuesta 3 (Flask + MySQL)  |  Versión 2.3 (parte diario de equipo)
 -- Requiere MySQL 8.0.16+ (para que los CHECK se apliquen)
 -- =====================================================================
 CREATE DATABASE IF NOT EXISTS gestion_flota
@@ -49,7 +49,24 @@ CREATE TABLE bitacora_operativa (
     Horometro DECIMAL(10,2) NULL CHECK (Horometro IS NULL OR Horometro >= 0),
     Kilometraje DECIMAL(10,2) NULL CHECK (Kilometraje IS NULL OR Kilometraje >= 0),
     Estado_Diario VARCHAR(255) NOT NULL,
+    -- Campos del «Parte diario de equipo» (v2.3)
+    Numero_Parte VARCHAR(20) NULL,
+    Faena VARCHAR(150) NULL,
+    Operador VARCHAR(150) NULL,
+    Horometro_Inicio DECIMAL(10,2) NULL,
+    Horas_Trabajadas DECIMAL(10,2) GENERATED ALWAYS AS (Horometro - Horometro_Inicio) STORED,
+    Turno VARCHAR(30) NULL,
+    Hora_Comienzo TIME NULL,
+    Hora_Termino TIME NULL,
+    Tipo_Trabajo VARCHAR(500) NULL,
+    Observaciones VARCHAR(500) NULL,
+    Combustible_Litros DECIMAL(10,2) NULL,
     UNIQUE KEY uq_bitacora_maq_fecha (FK_ID_Maquinaria, Fecha_Registro),
+    UNIQUE KEY uq_bitacora_numero_parte (Numero_Parte),
+    CONSTRAINT ck_bitacora_horometro_inicio CHECK (Horometro_Inicio IS NULL OR Horometro_Inicio >= 0),
+    CONSTRAINT ck_bitacora_combustible CHECK (Combustible_Litros IS NULL OR Combustible_Litros >= 0),
+    CONSTRAINT ck_bitacora_horometro_rango CHECK (Horometro_Inicio IS NULL
+        OR (Horometro IS NOT NULL AND Horometro >= Horometro_Inicio)),
     FOREIGN KEY (FK_ID_Maquinaria) REFERENCES maquinaria(ID_Maquinaria),
     FOREIGN KEY (FK_ID_Usuario) REFERENCES usuario(ID_Usuario)
 ) ENGINE=InnoDB;

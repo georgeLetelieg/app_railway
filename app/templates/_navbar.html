@@ -1,38 +1,44 @@
-<nav class="navbar navbar-expand navbar-dark bg-dark">
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
   <div class="container">
     <a class="navbar-brand" href="{{ url_for('main.dashboard') }}">Gestión de Flota</a>
-    <ul class="navbar-nav me-auto">
-      <li class="nav-item">
-        <a class="nav-link {{ 'active' if request.endpoint == 'main.dashboard' }}" href="{{ url_for('main.dashboard') }}">Panel</a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link {{ 'active' if request.blueprint == 'maquinaria' }}" href="{{ url_for('maquinaria.lista') }}">Flota</a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link {{ 'active' if request.blueprint == 'combustible' }}" href="{{ url_for('combustible.lista') }}">Combustible</a>
-      </li>
-      {% set ra = resumen_alertas() %}
-      <li class="nav-item">
-        <a class="nav-link {{ 'active' if request.blueprint == 'alertas' }}" href="{{ url_for('alertas.centro') }}">Alertas
-          {% if ra and ra.alertas %}<span class="badge text-bg-{{ 'danger' if ra.hay_vencidas else 'warning' }}">{{ ra.alertas }}</span>{% endif %}</a>
-      </li>
-      {% if es_admin %}
-      <li class="nav-item">
-        <a class="nav-link {{ 'active' if request.blueprint == 'usuarios' }}" href="{{ url_for('usuarios.lista') }}">Usuarios</a>
-      </li>
-      {% endif %}
-      {% if puede_ver_auditoria %}
-      <li class="nav-item">
-        <a class="nav-link {{ 'active' if request.blueprint == 'auditoria' }}" href="{{ url_for('auditoria.lista') }}">Auditoría</a>
-      </li>
-      {% endif %}
-    </ul>
-    <div class="d-flex align-items-center gap-3">
-      <span class="text-light small d-none d-md-inline">{{ session.get('nombre') }} · {{ session.get('rol') }}</span>
-      <form method="post" action="{{ url_for('auth.logout') }}" class="m-0">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn btn-outline-light btn-sm">Cerrar sesión</button>
-      </form>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu-principal"
+            aria-controls="menu-principal" aria-expanded="false" aria-label="Abrir menú">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="menu-principal">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item">
+          <a class="nav-link {{ 'active' if request.endpoint == 'main.dashboard' }}" href="{{ url_for('main.dashboard') }}">Panel</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {{ 'active' if request.blueprint == 'maquinaria' }}" href="{{ url_for('maquinaria.lista') }}">Flota</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {{ 'active' if request.blueprint == 'combustible' }}" href="{{ url_for('combustible.lista') }}">Combustible</a>
+        </li>
+        {% set ra = resumen_alertas() %}
+        <li class="nav-item">
+          <a class="nav-link {{ 'active' if request.blueprint == 'alertas' }}" href="{{ url_for('alertas.centro') }}">Alertas
+            {% if ra and ra.alertas %}<span class="badge text-bg-{{ 'danger' if ra.hay_vencidas else 'warning' }}">{{ ra.alertas }}</span>{% endif %}</a>
+        </li>
+        {% if es_admin %}
+        <li class="nav-item">
+          <a class="nav-link {{ 'active' if request.blueprint == 'usuarios' }}" href="{{ url_for('usuarios.lista') }}">Usuarios</a>
+        </li>
+        {% endif %}
+        {% if puede_ver_auditoria %}
+        <li class="nav-item">
+          <a class="nav-link {{ 'active' if request.blueprint == 'auditoria' }}" href="{{ url_for('auditoria.lista') }}">Auditoría</a>
+        </li>
+        {% endif %}
+      </ul>
+      <div class="d-flex flex-wrap align-items-center gap-2 gap-lg-3 py-2 py-lg-0">
+        <span class="text-light small">{{ session.get('nombre') }} · {{ session.get('rol') }}</span>
+        <form method="post" action="{{ url_for('auth.logout') }}" class="m-0 ms-auto ms-lg-0">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-outline-light btn-sm">Cerrar sesión</button>
+        </form>
+      </div>
     </div>
   </div>
 </nav>

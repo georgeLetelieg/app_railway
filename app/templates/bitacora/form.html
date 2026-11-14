@@ -9,9 +9,9 @@
   <li class="breadcrumb-item active">Registrar día</li>
 </ol></nav>
 
-<div class="row justify-content-center"><div class="col-12 col-lg-7">
+<div class="row justify-content-center"><div class="col-12 col-lg-9">
 <div class="card shadow-sm"><div class="card-body p-4">
-  <h1 class="h4 mb-1">Registrar día · {{ maquina.Patente }}</h1>
+  <h1 class="h4 mb-1">Parte diario de equipo · {{ maquina.Patente }}</h1>
   <p class="text-muted small">{{ maquina.Modelo }}. Horómetro: {{ lectura(lecturas.horometro, 'h') }} · Kilometraje: {{ lectura(lecturas.kilometraje, 'km') }}</p>
 
   <div class="alert alert-info small">
@@ -22,26 +22,86 @@
   <form method="post" novalidate id="form-bitacora"
         action="{{ url_for('bitacora.nuevo', maquinaria_id=maquina.ID_Maquinaria) }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <h2 class="h6 text-uppercase text-muted mt-2">Datos del parte</h2>
     <div class="row g-3">
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label for="fecha" class="form-label">Fecha</label>
         <input type="date" id="fecha" name="fecha" class="form-control" max="{{ hoy }}" required value="{{ datos.get('fecha', '') }}">
       </div>
+      <div class="col-md-3">
+        <label for="numero_parte" class="form-label">N° de parte</label>
+        <input type="text" id="numero_parte" name="numero_parte" class="form-control" maxlength="20" placeholder="Opcional" value="{{ datos.get('numero_parte', '') }}">
+      </div>
+      <div class="col-md-6">
+        <label for="faena" class="form-label">Faena</label>
+        <input type="text" id="faena" name="faena" class="form-control" maxlength="150" placeholder="Obra o lugar de trabajo" value="{{ datos.get('faena', '') }}">
+      </div>
+      <div class="col-md-12">
+        <label for="operador" class="form-label">Operador</label>
+        <input type="text" id="operador" name="operador" class="form-control" maxlength="150" placeholder="Nombre del operador del equipo" value="{{ datos.get('operador', '') }}">
+      </div>
+    </div>
+
+    <h2 class="h6 text-uppercase text-muted mt-4">Horómetro y kilometraje</h2>
+    <div class="row g-3">
       <div class="col-md-4">
-        <label for="horometro" class="form-label">Horómetro (h)</label>
+        <label for="horometro_inicio" class="form-label">Horómetro inicio (h)</label>
+        <input type="text" inputmode="decimal" id="horometro_inicio" name="horometro_inicio" class="form-control" placeholder="Opcional" value="{{ datos.get('horometro_inicio', '') }}">
+      </div>
+      <div class="col-md-4">
+        <label for="horometro" class="form-label">Horómetro final (h)</label>
         <input type="text" inputmode="decimal" id="horometro" name="horometro" class="form-control" placeholder="Opcional" value="{{ datos.get('horometro', '') }}">
       </div>
       <div class="col-md-4">
         <label for="kilometraje" class="form-label">Kilometraje (km)</label>
         <input type="text" inputmode="decimal" id="kilometraje" name="kilometraje" class="form-control" placeholder="Opcional" value="{{ datos.get('kilometraje', '') }}">
       </div>
+      <div class="col-12"><span class="small text-muted">Horas trabajadas: <strong id="horas-calculadas">—</strong> (final − inicio, se calcula al guardar)</span></div>
+    </div>
+
+    <h2 class="h6 text-uppercase text-muted mt-4">Jornada</h2>
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label for="turno" class="form-label">Turno</label>
+        <input type="text" id="turno" name="turno" class="form-control" maxlength="30" list="turnos" placeholder="Ej: Día, Noche" value="{{ datos.get('turno', '') }}">
+        <datalist id="turnos">{% for t in turnos %}<option value="{{ t }}">{% endfor %}</datalist>
+      </div>
+      <div class="col-md-4">
+        <label for="hora_comienzo" class="form-label">Comienzo</label>
+        <input type="time" id="hora_comienzo" name="hora_comienzo" class="form-control" value="{{ datos.get('hora_comienzo', '') }}">
+      </div>
+      <div class="col-md-4">
+        <label for="hora_termino" class="form-label">Término</label>
+        <input type="time" id="hora_termino" name="hora_termino" class="form-control" value="{{ datos.get('hora_termino', '') }}">
+      </div>
+    </div>
+
+    <h2 class="h6 text-uppercase text-muted mt-4">Trabajo realizado</h2>
+    <div class="row g-3">
       <div class="col-12">
         <label for="estado_diario" class="form-label">Estado del día</label>
         <input type="text" id="estado_diario" name="estado_diario" class="form-control" maxlength="255" list="sugerencias" required
                placeholder="Ej: Operativo, Día en taller…" value="{{ datos.get('estado_diario', '') }}">
         <datalist id="sugerencias">{% for s in sugerencias %}<option value="{{ s }}">{% endfor %}</datalist>
       </div>
+      <div class="col-12">
+        <label for="tipo_trabajo" class="form-label">Tipo de trabajo</label>
+        <textarea id="tipo_trabajo" name="tipo_trabajo" class="form-control" rows="2" maxlength="500" placeholder="Opcional">{{ datos.get('tipo_trabajo', '') }}</textarea>
+      </div>
+      <div class="col-12">
+        <label for="observaciones" class="form-label">Observaciones</label>
+        <textarea id="observaciones" name="observaciones" class="form-control" rows="2" maxlength="500" placeholder="Opcional">{{ datos.get('observaciones', '') }}</textarea>
+      </div>
+      <div class="col-md-4">
+        <label for="combustible" class="form-label">Combustible (litros)</label>
+        <input type="text" inputmode="decimal" id="combustible" name="combustible" class="form-control" placeholder="Opcional" value="{{ datos.get('combustible', '') }}">
+      </div>
+      <div class="col-md-8 d-flex align-items-end">
+        <span class="small text-muted">Litros de {{ maquina.Tipo_Combustible }} informados en el parte. La compra con vale y costo se registra en el módulo Combustible.</span>
+      </div>
     </div>
+
     <div class="d-flex gap-2 mt-4">
       <button type="submit" class="btn btn-primary">Guardar registro</button>
       <a class="btn btn-outline-secondary" href="{{ url_for('bitacora.lista', maquinaria_id=maquina.ID_Maquinaria) }}">Cancelar</a>
@@ -50,6 +110,22 @@
 </div></div>
 </div></div>
 <script>
+  (function () {
+    function numero(texto) {
+      var t = (texto || '').trim().replace('$', '').replace(/\s/g, '');
+      if (t.indexOf(',') >= 0 && t.indexOf('.') >= 0) t = t.replace(/\./g, '').replace(',', '.');
+      else if (t.indexOf(',') >= 0) t = t.replace(',', '.');
+      else if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '');
+      return t === '' ? NaN : Number(t);
+    }
+    var ini = document.getElementById('horometro_inicio'), fin = document.getElementById('horometro'),
+        salida = document.getElementById('horas-calculadas');
+    function calcular() {
+      var h = numero(fin.value) - numero(ini.value);
+      salida.textContent = isFinite(h) ? h.toFixed(2).replace('.', ',') + ' h' : '—';
+    }
+    ini.addEventListener('input', calcular); fin.addEventListener('input', calcular); calcular();
+  })();
   document.getElementById('form-bitacora').addEventListener('submit', function (e) {
     if (!confirm('Este registro no podrá modificarse ni eliminarse después. ¿Confirmas que los datos son correctos?')) e.preventDefault();
   });

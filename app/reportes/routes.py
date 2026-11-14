@@ -45,7 +45,8 @@ def ficha(maquinaria_id):
     dias = PERIODOS[periodo]
     desde = ahora_.date() - timedelta(days=dias) if dias else None
 
-    sql = ("SELECT b.Fecha_Registro, b.Horometro, b.Kilometraje, b.Estado_Diario, u.Nombre_Completo "
+    sql = ("SELECT b.Fecha_Registro, b.Horometro, b.Kilometraje, b.Estado_Diario, b.Horas_Trabajadas, "
+           "b.Faena, b.Operador, b.Numero_Parte, u.Nombre_Completo "
            "FROM bitacora_operativa b JOIN usuario u ON u.ID_Usuario = b.FK_ID_Usuario "
            "WHERE b.FK_ID_Maquinaria = %s")
     params = [maquinaria_id]
