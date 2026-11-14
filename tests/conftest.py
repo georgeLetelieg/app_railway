@@ -58,9 +58,12 @@ def bd(monkeypatch):
         CREATE TABLE maquinaria(ID_Maquinaria INTEGER PRIMARY KEY AUTOINCREMENT, Patente TEXT UNIQUE NOT NULL,
             Modelo TEXT NOT NULL, Anio INT NOT NULL, Tipo_Combustible TEXT NOT NULL,
             Numero_Chasis TEXT UNIQUE NOT NULL, Fotografia_Principal TEXT,
-            Estado_Operativo_Actual TEXT NOT NULL DEFAULT 'Operativa', Semaforo_Alertas TEXT NOT NULL DEFAULT 'Verde');
+            Estado_Operativo_Actual TEXT NOT NULL DEFAULT 'Operativa');
+        CREATE TABLE intento_login(ID_Intento INTEGER PRIMARY KEY AUTOINCREMENT, IP TEXT NOT NULL,
+            Fecha_Hora DATETIME NOT NULL);
         CREATE TABLE alerta_estatica(ID_Alerta_Estatica INTEGER PRIMARY KEY AUTOINCREMENT, FK_ID_Maquinaria INT UNIQUE NOT NULL,
-            Vencimiento_Revision_Tecnica DATE, Vencimiento_Permiso_Circulacion DATE, Proxima_Mantencion_Preventiva DECIMAL(10,2));
+            Vencimiento_Revision_Tecnica DATE, Vencimiento_Permiso_Circulacion DATE, Proxima_Mantencion_Preventiva DECIMAL(10,2),
+            FK_ID_Mantencion_Origen INT, Intervalo_Mantencion DECIMAL(10,2));
         CREATE TABLE bitacora_operativa(ID_Bitacora INTEGER PRIMARY KEY AUTOINCREMENT, FK_ID_Maquinaria INT NOT NULL,
             FK_ID_Usuario INT NOT NULL, Fecha_Registro DATE NOT NULL, Fecha_Hora_Ingreso DATETIME,
             Horometro DECIMAL(10,2), Kilometraje DECIMAL(10,2), Estado_Diario TEXT NOT NULL,
@@ -80,10 +83,11 @@ def bd(monkeypatch):
         CREATE TABLE carga_combustible(ID_Carga INTEGER PRIMARY KEY AUTOINCREMENT, FK_ID_Maquinaria INT NOT NULL,
             FK_ID_Usuario INT NOT NULL, Fecha_Carga DATETIME NOT NULL, Numero_Vale TEXT,
             Litros_Cargados DECIMAL(10,2) NOT NULL CHECK (Litros_Cargados > 0),
-            Costo_Total DECIMAL(12,2) NOT NULL CHECK (Costo_Total >= 0));
+            Costo_Total DECIMAL(12,2) NOT NULL CHECK (Costo_Total >= 0),
+            UNIQUE (FK_ID_Maquinaria, Numero_Vale));
         CREATE TABLE alerta_personalizada(ID_Alerta_Personalizada INTEGER PRIMARY KEY AUTOINCREMENT, FK_ID_Maquinaria INT NOT NULL,
             FK_ID_Usuario INT NOT NULL, Titulo_Alerta TEXT NOT NULL, Fecha_Vencimiento DATE NOT NULL,
-            Estado_Activa INT NOT NULL DEFAULT 1);
+            Estado_Activa INT NOT NULL DEFAULT 1, UNIQUE (FK_ID_Maquinaria, Titulo_Alerta, Fecha_Vencimiento));
         CREATE TABLE auditoria(ID_Auditoria INTEGER PRIMARY KEY AUTOINCREMENT, Tabla_Afectada TEXT NOT NULL,
             ID_Registro INT NOT NULL, FK_ID_Maquinaria INT, Accion TEXT NOT NULL, FK_ID_Usuario INT NOT NULL,
             Fecha_Hora DATETIME NOT NULL, Datos_Anteriores TEXT NOT NULL, Datos_Nuevos TEXT);

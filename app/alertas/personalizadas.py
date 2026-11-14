@@ -2,6 +2,7 @@
 dentro del perfil de una maquinaria. Al llegar la fecha, el motor de alertas las notifica."""
 from contextlib import closing
 
+import pymysql
 from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
 
 from app import db
@@ -13,6 +14,7 @@ bp = Blueprint("personalizadas", __name__,
                url_prefix="/maquinaria/<int:maquinaria_id>/alertas/personalizadas")
 
 TITULO_MIN, TITULO_MAX = 3, 255
+MENSAJE_DUPLICADA = "Ya existe una alerta con ese título y esa fecha para esta maquinaria."
 
 
 def _obtener_alerta(cur, maquinaria_id, alerta_id):
@@ -39,7 +41,7 @@ def _validar(cur, maquinaria_id, form, alerta_id=None):
                     "AND Fecha_Vencimiento = %s AND ID_Alerta_Personalizada <> %s",
                     (maquinaria_id, titulo, fecha, alerta_id or 0))
         if cur.fetchone():
-            errores.append("Ya existe una alerta con ese título y esa fecha para esta maquinaria.")
+            errores.append(MENSAJE_DUPLICADA)
     return datos, titulo, fecha, errores
 
 
@@ -65,10 +67,14 @@ def nueva(maquinaria_id):
         datos, titulo, fecha, errores = _validar(cur, maquinaria_id, request.form)
         if errores:
             return _formulario(maquina, None, datos, errores, 400)
-        cur.execute("INSERT INTO alerta_personalizada (FK_ID_Maquinaria, FK_ID_Usuario, Titulo_Alerta, "
-                    "Fecha_Vencimiento, Estado_Activa) VALUES (%s, %s, %s, %s, 1)",
-                    (maquinaria_id, session["usuario_id"], titulo, fecha))
-        conn.commit()
+        try:
+            cur.execute("INSERT INTO alerta_personalizada (FK_ID_Maquinaria, FK_ID_Usuario, Titulo_Alerta, "
+                        "Fecha_Vencimiento, Estado_Activa) VALUES (%s, %s, %s, %s, 1)",
+                        (maquinaria_id, session["usuario_id"], titulo, fecha))
+            conn.commit()
+        except pymysql.err.IntegrityError:          # envío simultáneo (UNIQUE en la base)
+            conn.rollback()
+            return _formulario(maquina, None, datos, [MENSAJE_DUPLICADA], 400)
     flash(f"Alerta «{titulo}» creada. Se notificará al acercarse el {fecha.strftime('%d-%m-%Y')}.", "success")
     return _al_perfil(maquinaria_id)
 
@@ -86,10 +92,14 @@ def editar(maquinaria_id, alerta_id):
         datos, titulo, fecha, errores = _validar(cur, maquinaria_id, request.form, alerta_id)
         if errores:
             return _formulario(maquina, alerta, datos, errores, 400)
-        cur.execute("UPDATE alerta_personalizada SET Titulo_Alerta = %s, Fecha_Vencimiento = %s "
-                    "WHERE ID_Alerta_Personalizada = %s AND FK_ID_Maquinaria = %s",
-                    (titulo, fecha, alerta_id, maquinaria_id))
-        conn.commit()
+        try:
+            cur.execute("UPDATE alerta_personalizada SET Titulo_Alerta = %s, Fecha_Vencimiento = %s "
+                        "WHERE ID_Alerta_Personalizada = %s AND FK_ID_Maquinaria = %s",
+                        (titulo, fecha, alerta_id, maquinaria_id))
+            conn.commit()
+        except pymysql.err.IntegrityError:
+            conn.rollback()
+            return _formulario(maquina, alerta, datos, [MENSAJE_DUPLICADA], 400)
     flash("Alerta actualizada correctamente.", "success")
     return _al_perfil(maquinaria_id)
 

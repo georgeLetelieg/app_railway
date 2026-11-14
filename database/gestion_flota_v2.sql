@@ -1,5 +1,5 @@
 -- =====================================================================
--- gestion_flota - Propuesta 3 (Flask + MySQL)  |  Versión 2.3 (parte diario de equipo)
+-- gestion_flota - Propuesta 3 (Flask + MySQL)  |  Versión 2.4 (correcciones de seguridad e integridad)
 -- Requiere MySQL 8.0.16+ (para que los CHECK se apliquen)
 -- =====================================================================
 CREATE DATABASE IF NOT EXISTS gestion_flota
@@ -35,8 +35,8 @@ CREATE TABLE maquinaria (
     Numero_Chasis VARCHAR(100) NOT NULL UNIQUE,
     Fotografia_Principal VARCHAR(255) NULL,
     Estado_Operativo_Actual ENUM('Operativa','En taller/Mantención','Inactiva')
-        NOT NULL DEFAULT 'Operativa',
-    Semaforo_Alertas ENUM('Verde','Amarillo','Rojo') NOT NULL DEFAULT 'Verde'
+        NOT NULL DEFAULT 'Operativa'
+    -- (v2.4) Se eliminó Semaforo_Alertas: el semáforo se calcula al consultar (app/alertas/motor.py)
 ) ENGINE=InnoDB;
 
 -- 4. bitacora_operativa
@@ -102,6 +102,7 @@ CREATE TABLE carga_combustible (
     Litros_Cargados DECIMAL(10,2) NOT NULL CHECK (Litros_Cargados > 0),
     Costo_Total DECIMAL(12,2) NOT NULL CHECK (Costo_Total >= 0),
     INDEX idx_comb_maq_fecha (FK_ID_Maquinaria, Fecha_Carga),
+    UNIQUE KEY uq_comb_maq_vale (FK_ID_Maquinaria, Numero_Vale),
     FOREIGN KEY (FK_ID_Maquinaria) REFERENCES maquinaria(ID_Maquinaria),
     FOREIGN KEY (FK_ID_Usuario) REFERENCES usuario(ID_Usuario)
 ) ENGINE=InnoDB;
@@ -113,6 +114,9 @@ CREATE TABLE alerta_estatica (
     Vencimiento_Revision_Tecnica DATE NULL,
     Vencimiento_Permiso_Circulacion DATE NULL,
     Proxima_Mantencion_Preventiva DECIMAL(10,2) NULL,
+    -- (v2.4) Mantención que programó la meta vigente y su intervalo (para recalcularla si se edita)
+    FK_ID_Mantencion_Origen INT NULL,
+    Intervalo_Mantencion DECIMAL(10,2) NULL,
     FOREIGN KEY (FK_ID_Maquinaria) REFERENCES maquinaria(ID_Maquinaria)
 ) ENGINE=InnoDB;
 
@@ -125,6 +129,7 @@ CREATE TABLE alerta_personalizada (
     Fecha_Vencimiento DATE NOT NULL,
     Estado_Activa BOOLEAN NOT NULL DEFAULT TRUE,
     INDEX idx_alerta_pers_venc (Estado_Activa, Fecha_Vencimiento),
+    UNIQUE KEY uq_alerta_pers (FK_ID_Maquinaria, Titulo_Alerta, Fecha_Vencimiento),
     FOREIGN KEY (FK_ID_Maquinaria) REFERENCES maquinaria(ID_Maquinaria),
     FOREIGN KEY (FK_ID_Usuario) REFERENCES usuario(ID_Usuario)
 ) ENGINE=InnoDB;
@@ -142,6 +147,11 @@ CREATE TABLE registro_mantencion (
     FOREIGN KEY (FK_ID_Usuario) REFERENCES usuario(ID_Usuario)
 ) ENGINE=InnoDB;
 
+-- (v2.4) alerta_estatica se crea antes que registro_mantencion, por eso esta FK se agrega aquí
+ALTER TABLE alerta_estatica
+    ADD CONSTRAINT fk_alerta_mant_origen FOREIGN KEY (FK_ID_Mantencion_Origen)
+        REFERENCES registro_mantencion(ID_Registro) ON DELETE SET NULL;
+
 -- 11. auditoria (registro de correcciones y eliminaciones; solo inserción)
 CREATE TABLE auditoria (
     ID_Auditoria INT AUTO_INCREMENT PRIMARY KEY,
@@ -157,6 +167,16 @@ CREATE TABLE auditoria (
     INDEX idx_auditoria_maquinaria_fecha (FK_ID_Maquinaria, Fecha_Hora),
     FOREIGN KEY (FK_ID_Maquinaria) REFERENCES maquinaria(ID_Maquinaria),
     FOREIGN KEY (FK_ID_Usuario) REFERENCES usuario(ID_Usuario)
+) ENGINE=InnoDB;
+
+-- 12. intento_login (v2.4): intentos fallidos de inicio de sesión por IP, para limitar ataques
+--     contra muchas cuentas a la vez. La aplicación borra los registros de más de un día.
+CREATE TABLE intento_login (
+    ID_Intento BIGINT AUTO_INCREMENT PRIMARY KEY,
+    IP VARCHAR(45) NOT NULL,
+    Fecha_Hora DATETIME NOT NULL,
+    INDEX idx_intento_ip_fecha (IP, Fecha_Hora),
+    INDEX idx_intento_fecha (Fecha_Hora)
 ) ENGINE=InnoDB;
 
 -- =====================================================================

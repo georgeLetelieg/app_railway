@@ -1,6 +1,7 @@
 """Alertas estáticas (RF5): centro de alertas y edición de los vencimientos obligatorios."""
 from contextlib import closing
 from datetime import date
+from decimal import Decimal
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 
@@ -76,6 +77,12 @@ def editar(maquinaria_id):
         cur.execute("UPDATE alerta_estatica SET Vencimiento_Revision_Tecnica = %s, "
                     "Vencimiento_Permiso_Circulacion = %s, Proxima_Mantencion_Preventiva = %s "
                     "WHERE FK_ID_Maquinaria = %s", (revision, permiso, mantencion, maquinaria_id))
+        anterior = (actual or {}).get("Proxima_Mantencion_Preventiva")
+        anterior = None if anterior is None else Decimal(str(anterior)).quantize(Decimal("0.01"))
+        if anterior != mantencion:
+            # Meta fijada a mano: deja de depender de la mantención que la había programado
+            cur.execute("UPDATE alerta_estatica SET FK_ID_Mantencion_Origen = NULL, Intervalo_Mantencion = NULL "
+                        "WHERE FK_ID_Maquinaria = %s", (maquinaria_id,))
         conn.commit()
 
     flash("Vencimientos actualizados correctamente.", "success")

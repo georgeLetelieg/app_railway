@@ -55,7 +55,7 @@
   </form>
 </div></div>
 </div></div>
-<script>
+<script nonce="{{ csp_nonce }}">
   (function () {
     var rol = document.getElementById('rol'), ayuda = document.getElementById('rol-ayuda');
     function mostrarAyuda() { var o = rol.options[rol.selectedIndex]; ayuda.textContent = (o && o.dataset.desc) || '\u00a0'; }

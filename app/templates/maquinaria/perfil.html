@@ -25,7 +25,7 @@
     <div class="d-flex gap-2">
       <a href="{{ url_for('maquinaria.editar', maquinaria_id=maquina.ID_Maquinaria) }}" class="btn btn-outline-primary">Editar</a>
       <form method="post" action="{{ url_for('maquinaria.eliminar', maquinaria_id=maquina.ID_Maquinaria) }}"
-            onsubmit="return confirm('¿Eliminar definitivamente la maquinaria {{ maquina.Patente }}? Esta acción no se puede deshacer.');">
+            data-confirmar="¿Eliminar definitivamente la maquinaria {{ maquina.Patente }}? Esta acción no se puede deshacer.">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-outline-danger">Eliminar</button>
       </form>
@@ -67,7 +67,7 @@
             <form method="post" action="{{ url_for('personalizadas.completar', **base) }}" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-success">Marcar cumplida</button></form>
             <a class="btn btn-sm btn-outline-primary" href="{{ url_for('personalizadas.editar', **base) }}">Editar</a>
           {% endif %}
-          <form method="post" action="{{ url_for('personalizadas.eliminar', **base) }}" class="d-inline" onsubmit="return confirm('¿Eliminar esta alerta?');"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-danger">Eliminar</button></form>
+          <form method="post" action="{{ url_for('personalizadas.eliminar', **base) }}" class="d-inline" data-confirmar="¿Eliminar esta alerta?"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-danger">Eliminar</button></form>
         {% endif %}
       </td>
     </tr>

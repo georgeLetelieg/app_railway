@@ -1,6 +1,8 @@
 """Gestión de Flota - Áridos y Maquinaria Fuentealba (patrón application factory)."""
+import secrets
+
 import pymysql
-from flask import Flask, session
+from flask import Flask, g, request, session
 
 from app.extensions import csrf
 from config import Config
@@ -10,7 +12,7 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
     if not app.config.get("SECRET_KEY"):
-                raise RuntimeError("Falta la variable de entorno SECRET_KEY (ver .env.example).")
+        raise RuntimeError("Falta la variable de entorno SECRET_KEY (ver .env.example).")
 
     if app.config.get("DETRAS_DE_PROXY"):
         # Railway termina el HTTPS: confiar en X-Forwarded-For/Proto de un único proxy
@@ -18,6 +20,7 @@ def create_app(config_class=Config):
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 
     csrf.init_app(app)
+    _cabeceras_de_seguridad(app)
 
     # Blueprints (un módulo por funcionalidad)
     from app.auth.routes import bp as auth_bp
@@ -76,3 +79,34 @@ def create_app(config_class=Config):
         return "El servicio no está disponible en este momento. Intenta nuevamente.", 503
 
     return app
+
+
+CDN = "https://cdn.jsdelivr.net"
+
+
+def _cabeceras_de_seguridad(app):
+    """Cabeceras HTTP de seguridad. Los <script> en línea solo se ejecutan si llevan el nonce de la petición."""
+
+    @app.before_request
+    def generar_nonce():
+        g.csp_nonce = secrets.token_urlsafe(16)
+
+    @app.context_processor
+    def nonce_para_plantillas():
+        return {"csp_nonce": g.get("csp_nonce", "")}
+
+    @app.after_request
+    def agregar_cabeceras(respuesta):
+        cabeceras = respuesta.headers
+        cabeceras.setdefault("X-Frame-Options", "DENY")                 # evita clickjacking
+        cabeceras.setdefault("X-Content-Type-Options", "nosniff")
+        cabeceras.setdefault("Referrer-Policy", "same-origin")
+        if request.is_secure:                                          # en Railway (con DETRAS_DE_PROXY=1)
+            cabeceras.setdefault("Strict-Transport-Security", "max-age=31536000")
+        if respuesta.mimetype == "text/html":
+            cabeceras.setdefault("Content-Security-Policy", (
+                f"default-src 'self'; script-src 'self' 'nonce-{g.get('csp_nonce', '')}' {CDN}; "
+                f"style-src 'self' 'unsafe-inline' {CDN}; img-src 'self' data:; font-src 'self' {CDN}; "
+                "connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; "
+                "frame-ancestors 'none'"))
+        return respuesta

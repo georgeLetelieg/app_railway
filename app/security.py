@@ -7,7 +7,12 @@ from app import db
 
 
 def login_required(f):
-    """Exige sesión iniciada y que la cuenta siga activa en la base de datos."""
+    """Exige sesión iniciada y que la cuenta siga activa en la base de datos.
+
+    En cada petición vuelve a leer el rol desde la base y lo copia a la sesión, de modo que los decoradores
+    que se aplican después (escritura_required, config_roles_required) usan siempre el rol vigente: un cambio
+    de rol hecho directamente en la base se aplica de inmediato, sin esperar a que expire la sesión.
+    """
     @wraps(f)
     def decorated(*args, **kwargs):
         usuario_id = session.get("usuario_id")
@@ -16,13 +21,16 @@ def login_required(f):
             return redirect(url_for("auth.login"))
 
         with closing(db.get_db_connection()) as conn, conn.cursor() as cur:
-            cur.execute("SELECT Estado_Activo FROM usuario WHERE ID_Usuario = %s", (usuario_id,))
+            cur.execute("SELECT u.Estado_Activo, u.FK_ID_Rol, r.Nombre_Rol FROM usuario u "
+                        "JOIN rol r ON r.ID_Rol = u.FK_ID_Rol WHERE u.ID_Usuario = %s", (usuario_id,))
             fila = cur.fetchone()
 
         if not fila or not fila["Estado_Activo"]:
             session.clear()
             flash("Tu cuenta ya no está habilitada.", "danger")
             return redirect(url_for("auth.login"))
+        if session.get("rol") != fila["Nombre_Rol"]:      # la base de datos manda sobre lo guardado en la sesión
+            session["rol"], session["rol_id"] = fila["Nombre_Rol"], fila["FK_ID_Rol"]
         return f(*args, **kwargs)
     return decorated
 

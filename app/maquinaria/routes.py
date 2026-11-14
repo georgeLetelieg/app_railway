@@ -11,7 +11,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from app import db
 from app.alertas import motor as motor_alertas
 from app.auditoria.registro import ACCION_MODIFICACION, registrar
-from app.archivos import MAX_BYTES, borrar_archivo, guardar_archivo
+from app.archivos import MAX_BYTES, MAX_PIXELES, abrir_imagen, borrar_archivo, guardar_archivo
 from app.bitacora.queries import ultimas_lecturas
 from app.combustible.queries import ultima_carga
 from app.documentos.queries import contar_documentos
@@ -51,17 +51,24 @@ def _procesar_foto(archivo):
     if tamano > MAX_BYTES:
         raise ValueError("La fotografía supera el límite de 5 MB.")
     try:
-        imagen = Image.open(archivo.stream)
+        imagen = abrir_imagen(archivo.stream)        # rechaza resoluciones excesivas antes de decodificar
         if imagen.format not in FORMATOS_FOTO:
             raise ValueError
         imagen.verify()
         archivo.stream.seek(0)
-        imagen = ImageOps.exif_transpose(Image.open(archivo.stream)).convert("RGB")
+        imagen = abrir_imagen(archivo.stream)
+        imagen.draft("RGB", (1600, 1600))            # JPEG: decodifica directamente a tamaño reducido
+        imagen = ImageOps.exif_transpose(imagen).convert("RGB")
         imagen.thumbnail((1600, 1600))
         salida = BytesIO()
         imagen.save(salida, "JPEG", quality=85, optimize=True)
         return salida.getvalue()
-    except (ValueError, UnidentifiedImageError, OSError, Image.DecompressionBombError):
+    except ValueError as error:
+        if "resolución" in str(error):
+            raise ValueError(f"La fotografía supera la resolución máxima permitida "
+                             f"({MAX_PIXELES // 1_000_000} megapíxeles).")
+        raise ValueError("La fotografía debe ser una imagen JPG, PNG o WEBP válida.")
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
         raise ValueError("La fotografía debe ser una imagen JPG, PNG o WEBP válida.")
 
 

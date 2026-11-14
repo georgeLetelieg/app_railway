@@ -39,7 +39,7 @@
         {% if puede_escribir %}
           <a class="btn btn-sm btn-outline-primary" href="{{ url_for('documentos.editar', **base) }}">Editar</a>
           <form method="post" action="{{ url_for('documentos.eliminar', **base) }}" class="d-inline"
-                onsubmit="return confirm('¿Eliminar definitivamente este documento? Esta acción no se puede deshacer.');">
+                data-confirmar="¿Eliminar definitivamente este documento? Esta acción no se puede deshacer.">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="btn btn-sm btn-outline-danger">Eliminar</button>
           </form>

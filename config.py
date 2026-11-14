@@ -1,4 +1,4 @@
-"""Configuración central. Todos los valores sensibles vienen del archivo .env."""
+"""Configuración central. Valores sensibles desde variables de entorno (.env en local, panel en Railway)."""
 import os
 from datetime import timedelta
 from pathlib import Path
@@ -40,12 +40,15 @@ class Config:
     # Sesión y cookies
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
-    SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "0") == "1"
+    # Detrás del proxy HTTPS (Railway) la cookie viaja solo por HTTPS salvo que se indique lo contrario
+    SESSION_COOKIE_SECURE = _env("SESSION_COOKIE_SECURE", defecto="1" if DETRAS_DE_PROXY else "0") == "1"
     PERMANENT_SESSION_LIFETIME = timedelta(hours=8)
 
     # Autenticación
     MAX_INTENTOS = 3
     MINUTOS_BLOQUEO = 15
+    # Intentos fallidos permitidos desde una misma IP (todas las cuentas) dentro de MINUTOS_BLOQUEO
+    MAX_INTENTOS_IP = 20
     # "scrypt" (por defecto de Werkzeug 3). Si se exige SHA-256: "pbkdf2:sha256"
     METODO_HASH = "scrypt"
 

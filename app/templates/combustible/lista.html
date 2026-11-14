@@ -74,7 +74,7 @@
       <td class="text-end text-nowrap">
         <a class="btn btn-sm btn-outline-primary" href="{{ url_for('combustible.editar', carga_id=c.ID_Carga) }}">Editar</a>
         <form method="post" action="{{ url_for('combustible.eliminar', carga_id=c.ID_Carga) }}" class="d-inline"
-              onsubmit="return confirm('¿Eliminar esta carga de combustible? Esta acción no se puede deshacer.');">
+              data-confirmar="¿Eliminar esta carga de combustible? Esta acción no se puede deshacer.">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn btn-sm btn-outline-danger">Eliminar</button>
         </form>

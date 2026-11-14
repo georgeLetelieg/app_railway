@@ -26,6 +26,24 @@ def _respuesta_login(codigo):
     return render_template("auth/login.html"), codigo
 
 
+def _ip_cliente():
+    # Con DETRAS_DE_PROXY=1 (Railway), ProxyFix deja aquí la IP real del cliente y no la del proxy
+    return (request.remote_addr or "desconocida")[:45]
+
+
+def _registrar_fallo_ip(cur, ip, momento):
+    cur.execute("INSERT INTO intento_login (IP, Fecha_Hora) VALUES (%s, %s)", (ip, momento))
+    cur.execute("DELETE FROM intento_login WHERE Fecha_Hora < %s", (momento - timedelta(days=1),))
+
+
+def _rechazar(conn, cur, ip, momento):
+    """Respuesta única para cualquier fallo: no revela si el correo existe ni el estado de la cuenta."""
+    _registrar_fallo_ip(cur, ip, momento)
+    conn.commit()
+    flash(MENSAJE_CREDENCIALES, "danger")
+    return _respuesta_login(401)
+
+
 @bp.route("/login", methods=["GET", "POST"])
 def login():
     if "usuario_id" in session:
@@ -40,7 +58,17 @@ def login():
         flash("Ingresa tu correo y tu contraseña.", "warning")
         return _respuesta_login(400)
 
+    ip, momento = _ip_cliente(), ahora()
+    ventana = timedelta(minutes=cfg["MINUTOS_BLOQUEO"])
     with closing(db.get_db_connection()) as conn, conn.cursor() as cur:
+        # 0. Límite por IP: frena el ataque de una misma contraseña contra muchas cuentas
+        cur.execute("SELECT COUNT(*) AS n FROM intento_login WHERE IP = %s AND Fecha_Hora >= %s",
+                    (ip, momento - ventana))
+        if cur.fetchone()["n"] >= cfg["MAX_INTENTOS_IP"]:
+            flash(f"Demasiados intentos fallidos desde esta conexión. Espera {cfg['MINUTOS_BLOQUEO']} minutos "
+                  "e inténtalo de nuevo.", "danger")
+            return _respuesta_login(429)
+
         cur.execute(
             """SELECT u.ID_Usuario, u.Nombre_Completo, u.Contrasena_Hash,
                       u.Estado_Activo, u.Intentos_Fallidos, u.Fecha_Hora_Bloqueo,
@@ -52,61 +80,59 @@ def login():
         )
         usuario = cur.fetchone()
 
-        # 1. Correo inexistente
+        # 1. Correo inexistente: se calcula igual un hash para que la respuesta tarde lo mismo
         if usuario is None:
             check_password_hash(_hash_relleno(cfg["METODO_HASH"]), password)
-            flash(MENSAJE_CREDENCIALES, "danger")
-            return _respuesta_login(401)
+            return _rechazar(conn, cur, ip, momento)
+        uid = usuario["ID_Usuario"]
 
-        # 2. Cuenta deshabilitada (Estado_Activo)
-        if not usuario["Estado_Activo"]:
-            flash("Esta cuenta se encuentra deshabilitada. Contacte al administrador.", "danger")
+        # 2. Bloqueo temporal vencido: se reinicia el contador
+        fin_bloqueo = None
+        if usuario["Fecha_Hora_Bloqueo"] is not None:
+            fin_bloqueo = usuario["Fecha_Hora_Bloqueo"] + ventana
+            if momento >= fin_bloqueo:
+                cur.execute("UPDATE usuario SET Intentos_Fallidos = 0, Fecha_Hora_Bloqueo = NULL "
+                            "WHERE ID_Usuario = %s", (uid,))
+                conn.commit()
+                fin_bloqueo = None
+
+        # 3. Cuenta deshabilitada o bloqueada: el motivo solo se muestra si la contraseña es correcta
+        if not usuario["Estado_Activo"] or fin_bloqueo is not None:
+            if not check_password_hash(usuario["Contrasena_Hash"], password):
+                return _rechazar(conn, cur, ip, momento)
+            if not usuario["Estado_Activo"]:
+                flash("Esta cuenta se encuentra deshabilitada. Contacte al administrador.", "danger")
+            else:
+                minutos = max(1, math.ceil((fin_bloqueo - momento).total_seconds() / 60))
+                flash(f"Cuenta bloqueada temporalmente por intentos fallidos. Intenta nuevamente en "
+                      f"{minutos} minuto(s).", "danger")
             return _respuesta_login(403)
 
-        # 3. Bloqueo temporal (Fecha_Hora_Bloqueo + MINUTOS_BLOQUEO)
-        bloqueo = usuario["Fecha_Hora_Bloqueo"]
-        if bloqueo is not None:
-            fin_bloqueo = bloqueo + timedelta(minutes=cfg["MINUTOS_BLOQUEO"])
-            if ahora() < fin_bloqueo:
-                minutos = max(1, math.ceil((fin_bloqueo - ahora()).total_seconds() / 60))
-                flash(f"Cuenta bloqueada temporalmente. Intenta nuevamente en {minutos} minuto(s).", "danger")
-                return _respuesta_login(403)
-            # El bloqueo ya venció: se reinicia el contador
-            cur.execute(
-                "UPDATE usuario SET Intentos_Fallidos = 0, Fecha_Hora_Bloqueo = NULL "
-                "WHERE ID_Usuario = %s", (usuario["ID_Usuario"],))
-            conn.commit()
-            usuario["Intentos_Fallidos"] = 0
+        # 4. Se reserva el intento ANTES de verificar la clave, con un incremento atómico en la base:
+        #    peticiones simultáneas no pueden probar más de MAX_INTENTOS contraseñas.
+        cur.execute("UPDATE usuario SET Intentos_Fallidos = Intentos_Fallidos + 1 WHERE ID_Usuario = %s", (uid,))
+        conn.commit()
+        cur.execute("SELECT Intentos_Fallidos FROM usuario WHERE ID_Usuario = %s", (uid,))
+        intentos = cur.fetchone()["Intentos_Fallidos"]
 
-        # 4. Contraseña correcta
-        if check_password_hash(usuario["Contrasena_Hash"], password):
-            cur.execute(
-                "UPDATE usuario SET Intentos_Fallidos = 0, Fecha_Hora_Bloqueo = NULL "
-                "WHERE ID_Usuario = %s", (usuario["ID_Usuario"],))
+        if intentos <= cfg["MAX_INTENTOS"] and check_password_hash(usuario["Contrasena_Hash"], password):
+            # 5. Contraseña correcta
+            cur.execute("UPDATE usuario SET Intentos_Fallidos = 0, Fecha_Hora_Bloqueo = NULL "
+                        "WHERE ID_Usuario = %s", (uid,))
             conn.commit()
-
             session.clear()  # evita reutilizar una sesión previa
             session.permanent = True
-            session["usuario_id"] = usuario["ID_Usuario"]
+            session["usuario_id"] = uid
             session["nombre"] = usuario["Nombre_Completo"]
             session["rol_id"] = usuario["FK_ID_Rol"]
             session["rol"] = usuario["Nombre_Rol"]
             return redirect(url_for("main.dashboard"))
 
-        # 5. Contraseña incorrecta
-        intentos = (usuario["Intentos_Fallidos"] or 0) + 1
+        # 6. Contraseña incorrecta (o intentos agotados por peticiones simultáneas)
         if intentos >= cfg["MAX_INTENTOS"]:
-            cur.execute(
-                "UPDATE usuario SET Intentos_Fallidos = %s, Fecha_Hora_Bloqueo = %s "
-                "WHERE ID_Usuario = %s", (intentos, ahora(), usuario["ID_Usuario"]))
-            flash(f"Demasiados intentos fallidos. Cuenta bloqueada por {cfg['MINUTOS_BLOQUEO']} minutos.", "danger")
-        else:
-            cur.execute(
-                "UPDATE usuario SET Intentos_Fallidos = %s WHERE ID_Usuario = %s",
-                (intentos, usuario["ID_Usuario"]))
-            flash(MENSAJE_CREDENCIALES, "danger")
-        conn.commit()
-        return _respuesta_login(401)
+            cur.execute("UPDATE usuario SET Fecha_Hora_Bloqueo = %s "
+                        "WHERE ID_Usuario = %s AND Fecha_Hora_Bloqueo IS NULL", (momento, uid))
+        return _rechazar(conn, cur, ip, momento)
 
 
 @bp.route("/logout", methods=["POST"])

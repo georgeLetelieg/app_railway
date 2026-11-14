@@ -5,7 +5,7 @@ parte: N° de folio, faena, operador, jornada (turno, hora de comienzo y de tér
 observaciones y combustible (litros, del tipo que use cada equipo).
 
 El historial es inalterable: NO existen rutas para editar ni eliminar registros
-(la base de datos además lo impide con triggers, ver database/gestion_flota_v2.sql).
+(la base de datos además lo impide con triggers, ver el script de creación en database/).
 """
 from contextlib import closing
 from datetime import date, datetime, time, timedelta

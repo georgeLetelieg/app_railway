@@ -36,7 +36,7 @@
       <div class="d-flex gap-2">
         <a class="btn btn-sm btn-outline-primary" href="{{ url_for('mantenciones.editar', **base) }}">Editar</a>
         <form method="post" action="{{ url_for('mantenciones.eliminar', **base) }}" class="m-0"
-              onsubmit="return confirm('¿Eliminar este registro de mantención? Esta acción no se puede deshacer.');">
+              data-confirmar="¿Eliminar este registro de mantención? Esta acción no se puede deshacer.">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn btn-sm btn-outline-danger">Eliminar</button>
         </form>

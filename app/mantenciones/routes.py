@@ -117,9 +117,17 @@ def _programar_proxima(cur, maquinaria_id, nuevo_id, fecha, lectura, intervalo):
     cur.execute("SELECT 1 AS x FROM alerta_estatica WHERE FK_ID_Maquinaria = %s", (maquinaria_id,))
     if cur.fetchone() is None:
         cur.execute("INSERT INTO alerta_estatica (FK_ID_Maquinaria) VALUES (%s)", (maquinaria_id,))
-    cur.execute("UPDATE alerta_estatica SET Proxima_Mantencion_Preventiva = %s WHERE FK_ID_Maquinaria = %s",
-                (meta, maquinaria_id))
+    # Se recuerda qué mantención fijó la meta y con qué intervalo, para recalcularla si ese registro se edita
+    cur.execute("UPDATE alerta_estatica SET Proxima_Mantencion_Preventiva = %s, FK_ID_Mantencion_Origen = %s, "
+                "Intervalo_Mantencion = %s WHERE FK_ID_Maquinaria = %s", (meta, nuevo_id, intervalo, maquinaria_id))
     return meta, None
+
+
+def _meta_programada_por(cur, maquinaria_id, registro_id):
+    """Fila de alerta_estatica si la próxima mantención vigente fue programada por este registro; si no, None."""
+    cur.execute("SELECT Intervalo_Mantencion FROM alerta_estatica WHERE FK_ID_Maquinaria = %s "
+                "AND FK_ID_Mantencion_Origen = %s", (maquinaria_id, registro_id))
+    return cur.fetchone()
 
 
 # --------------------------------------------------------------------------
@@ -203,8 +211,18 @@ def editar(maquinaria_id, registro_id):
                     (v["fecha"], v["lectura"], v["detalle"], registro_id, maquinaria_id))
         if antes != despues:                      # guardar sin cambiar nada no deja registro
             registrar(cur, "registro_mantencion", registro_id, ACCION_MODIFICACION, antes, despues, maquinaria_id)
+
+        mensaje = "Mantención actualizada correctamente."
+        origen = _meta_programada_por(cur, maquinaria_id, registro_id)
+        lectura_anterior = Decimal(str(registro["Horometro_Mecanico"])).quantize(Decimal("0.01"))
+        if origen and origen["Intervalo_Mantencion"] is not None and v["lectura"] != lectura_anterior:
+            # Esta mantención fijó la meta vigente: se recalcula con la lectura corregida
+            meta = (v["lectura"] + Decimal(str(origen["Intervalo_Mantencion"]))).quantize(Decimal("0.01"))
+            cur.execute("UPDATE alerta_estatica SET Proxima_Mantencion_Preventiva = %s WHERE FK_ID_Maquinaria = %s",
+                        (meta, maquinaria_id))
+            mensaje += f" Próxima mantención preventiva recalculada a las {num_es(meta)}."
         conn.commit()
-    flash("Mantención actualizada correctamente.", "success")
+    flash(mensaje, "success")
     return redirect(url_for("mantenciones.lista", maquinaria_id=maquinaria_id))
 
 
@@ -215,9 +233,18 @@ def eliminar(maquinaria_id, registro_id):
     with closing(db.get_db_connection()) as conn, conn.cursor() as cur:
         registro = _obtener_registro(cur, maquinaria_id, registro_id)
         antes = _snapshot(registro["Fecha_Mantencion"], registro["Horometro_Mecanico"], registro["Detalle_Trabajo"])
+        meta_huerfana = _meta_programada_por(cur, maquinaria_id, registro_id) is not None   # antes del DELETE
         cur.execute("DELETE FROM registro_mantencion WHERE ID_Registro = %s AND FK_ID_Maquinaria = %s",
                     (registro_id, maquinaria_id))
         registrar(cur, "registro_mantencion", registro_id, ACCION_ELIMINACION, antes, maquinaria_id=maquinaria_id)
+        if meta_huerfana:
+            # La meta vigente salía de este registro: ya no tiene respaldo, se deja sin programar
+            cur.execute("UPDATE alerta_estatica SET Proxima_Mantencion_Preventiva = NULL, "
+                        "FK_ID_Mantencion_Origen = NULL, Intervalo_Mantencion = NULL WHERE FK_ID_Maquinaria = %s",
+                        (maquinaria_id,))
         conn.commit()
     flash("Registro de mantención eliminado.", "success")
+    if meta_huerfana:
+        flash("La próxima mantención preventiva había sido programada por este registro y quedó sin definir. "
+              "Prográmala de nuevo desde una mantención o en «Editar vencimientos».", "warning")
     return redirect(url_for("mantenciones.lista", maquinaria_id=maquinaria_id))

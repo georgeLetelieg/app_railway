@@ -11,6 +11,19 @@ MAX_BYTES = 5 * 1024 * 1024  # 5 MB por archivo (igual que el CHECK de la tabla 
 TIPOS = {"pdf": "application/pdf", "jpg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
 _FORMATOS_IMAGEN = {"JPEG": "jpg", "PNG": "png", "WEBP": "webp"}
 MENSAJE_TIPO = "El archivo debe ser un PDF o una imagen (JPG, PNG o WEBP) válida."
+# Tope de resolución para imágenes subidas (≈ 40 MP; una foto de celular típica tiene 12 a 50 MP).
+# Evita las «bombas de descompresión»: un PNG de pocos MB puede declarar 12.000 × 12.000 px y ocupar
+# cientos de MB de RAM al decodificarse. Pillow, por defecto, solo falla por encima de ~179 MP.
+MAX_PIXELES = 40_000_000
+Image.MAX_IMAGE_PIXELS = MAX_PIXELES      # por encima de 2× Pillow ya lanza DecompressionBombError
+
+
+def abrir_imagen(origen):
+    """Image.open con el tope de resolución: rechaza la imagen antes de decodificar sus píxeles."""
+    imagen = Image.open(origen)
+    if imagen.width * imagen.height > MAX_PIXELES:
+        raise ValueError(f"La imagen supera la resolución máxima permitida ({MAX_PIXELES // 1_000_000} megapíxeles).")
+    return imagen
 
 
 def leer_subida(archivo):
@@ -28,7 +41,7 @@ def detectar_tipo(contenido):
     if b"%PDF-" in contenido[:1024]:
         return "pdf"
     try:
-        imagen = Image.open(BytesIO(contenido))
+        imagen = abrir_imagen(BytesIO(contenido))
         extension = _FORMATOS_IMAGEN.get(imagen.format)
         if extension is None:
             raise ValueError(MENSAJE_TIPO)

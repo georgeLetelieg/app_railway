@@ -6,7 +6,7 @@
 {%- endmacro %}
 {% macro accion(usuario, nombre_accion, texto, clase, confirmar=None) -%}
   <form method="post" action="{{ url_for('usuarios.cambiar_estado', usuario_id=usuario.ID_Usuario) }}" class="d-inline"
-        {% if confirmar %}onsubmit="return confirm('{{ confirmar }}');"{% endif %}>
+        {% if confirmar %}data-confirmar="{{ confirmar }}"{% endif %}>
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="accion" value="{{ nombre_accion }}">
     <button type="submit" class="btn btn-sm btn-outline-{{ clase }}">{{ texto }}</button>

@@ -48,7 +48,7 @@
   </form>
 </div></div>
 </div></div>
-<script>
+<script nonce="{{ csp_nonce }}">
   (function () {
     var t = document.getElementById('detalle'), c = document.getElementById('contador');
     function actualizar() { c.textContent = t.value.length.toLocaleString('es-CL'); }

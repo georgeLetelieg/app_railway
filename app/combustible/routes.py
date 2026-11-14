@@ -5,6 +5,8 @@ from datetime import date, datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
 from io import StringIO
 
+import pymysql
+
 from flask import (Blueprint, Response, abort, flash, redirect, render_template,
                    request, session, url_for)
 
@@ -14,6 +16,8 @@ from app.security import escritura_required, login_required
 from app.utils import ahora, parse_numero_es
 
 bp = Blueprint("combustible", __name__, url_prefix="/combustible")
+
+MENSAJE_VALE_DUPLICADO = "El vale N° {vale} ya está registrado para esa maquinaria."
 
 POR_PAGINA = 50
 LITROS_MAX_CARGA = Decimal("5000")          # tope anti-errores de digitación por carga
@@ -120,7 +124,7 @@ def _validar(cur, form, carga_id=None):
         cur.execute("SELECT 1 AS x FROM carga_combustible WHERE FK_ID_Maquinaria = %s AND Numero_Vale = %s "
                     "AND ID_Carga <> %s", (maquina_id, vale, carga_id or 0))
         if cur.fetchone():
-            errores.append(f"El vale N° {vale} ya está registrado para esa maquinaria.")
+            errores.append(MENSAJE_VALE_DUPLICADO.format(vale=vale))
 
     valores = {"maquina": maquina_id, "fecha": fecha, "vale": vale or None, "litros": litros, "costo": costo}
     return datos, valores, errores
@@ -236,11 +240,15 @@ def nueva():
         datos, v, errores = _validar(cur, request.form)
         if errores:
             return _formulario(cur, None, datos, errores, 400)
-        cur.execute(
-            "INSERT INTO carga_combustible (FK_ID_Maquinaria, FK_ID_Usuario, Fecha_Carga, Numero_Vale, "
-            "Litros_Cargados, Costo_Total) VALUES (%s, %s, %s, %s, %s, %s)",
-            (v["maquina"], session["usuario_id"], v["fecha"], v["vale"], v["litros"], v["costo"]))
-        conn.commit()
+        try:
+            cur.execute(
+                "INSERT INTO carga_combustible (FK_ID_Maquinaria, FK_ID_Usuario, Fecha_Carga, Numero_Vale, "
+                "Litros_Cargados, Costo_Total) VALUES (%s, %s, %s, %s, %s, %s)",
+                (v["maquina"], session["usuario_id"], v["fecha"], v["vale"], v["litros"], v["costo"]))
+            conn.commit()
+        except pymysql.err.IntegrityError:          # envío simultáneo del mismo vale (UNIQUE en la base)
+            conn.rollback()
+            return _formulario(cur, None, datos, [MENSAJE_VALE_DUPLICADO.format(vale=v["vale"])], 400)
     flash("Carga de combustible registrada.", "success")
     return redirect(_destino(v["fecha"], v["maquina"]))
 
@@ -266,10 +274,14 @@ def editar(carga_id):
         antes = _snapshot(carga["Patente"], carga["Fecha_Carga"], carga["Numero_Vale"],
                           carga["Litros_Cargados"], carga["Costo_Total"])
         despues = _snapshot(patente_nueva, v["fecha"], v["vale"], v["litros"], v["costo"])
-        cur.execute(
-            "UPDATE carga_combustible SET FK_ID_Maquinaria = %s, Fecha_Carga = %s, Numero_Vale = %s, "
-            "Litros_Cargados = %s, Costo_Total = %s WHERE ID_Carga = %s",
-            (v["maquina"], v["fecha"], v["vale"], v["litros"], v["costo"], carga_id))
+        try:
+            cur.execute(
+                "UPDATE carga_combustible SET FK_ID_Maquinaria = %s, Fecha_Carga = %s, Numero_Vale = %s, "
+                "Litros_Cargados = %s, Costo_Total = %s WHERE ID_Carga = %s",
+                (v["maquina"], v["fecha"], v["vale"], v["litros"], v["costo"], carga_id))
+        except pymysql.err.IntegrityError:          # envío simultáneo del mismo vale (UNIQUE en la base)
+            conn.rollback()
+            return _formulario(cur, carga, datos, [MENSAJE_VALE_DUPLICADO.format(vale=v["vale"])], 400)
         if antes != despues:                      # guardar sin cambiar nada no deja registro
             registrar(cur, "carga_combustible", carga_id, ACCION_MODIFICACION, antes, despues, v["maquina"])
         conn.commit()

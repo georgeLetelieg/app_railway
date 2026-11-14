@@ -20,6 +20,7 @@
   </div>
 
   <form method="post" novalidate id="form-bitacora"
+        data-confirmar="Este registro no podrá modificarse ni eliminarse después. ¿Confirmas que los datos son correctos?"
         action="{{ url_for('bitacora.nuevo', maquinaria_id=maquina.ID_Maquinaria) }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
@@ -109,7 +110,7 @@
   </form>
 </div></div>
 </div></div>
-<script>
+<script nonce="{{ csp_nonce }}">
   (function () {
     function numero(texto) {
       var t = (texto || '').trim().replace('$', '').replace(/\s/g, '');
@@ -126,8 +127,5 @@
     }
     ini.addEventListener('input', calcular); fin.addEventListener('input', calcular); calcular();
   })();
-  document.getElementById('form-bitacora').addEventListener('submit', function (e) {
-    if (!confirm('Este registro no podrá modificarse ni eliminarse después. ¿Confirmas que los datos son correctos?')) e.preventDefault();
-  });
 </script>
 {% endblock %}
